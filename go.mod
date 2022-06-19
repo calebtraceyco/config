@@ -1,4 +1,4 @@
-module config-yaml
+module github.com/calebtracey/config-yaml
 
 go 1.18
 
