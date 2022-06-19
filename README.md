@@ -1,3 +1,3 @@
 # config-yaml
 
-<img src=./config-yaml.jpeg />
+<img src=./config-yaml.jpg />
