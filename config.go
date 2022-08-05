@@ -103,3 +103,15 @@ func (c *Config) GetDatabaseConfig(name string) (*DatabaseConfig, error) {
 
 	return database, nil
 }
+
+func (c *Config) GetServiceConfig(name string) (*ServiceConfig, error) {
+	var service *ServiceConfig
+	service, ok := c.ServiceConfigs[name]
+
+	if !ok {
+		err := fmt.Errorf("service config: %v not found", name)
+		return nil, err
+	}
+
+	return service, nil
+}

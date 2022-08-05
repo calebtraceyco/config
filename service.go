@@ -7,10 +7,12 @@ import (
 )
 
 type ServiceConfig struct {
-	Name             yaml.Node `yaml:"Name"`
-	URL              yaml.Node `yaml:"URL"`
-	componentConfigs ComponentConfigs
-	HTTPClient       *http.Client
+	Name                         yaml.Node `yaml:"Name"`
+	URL                          yaml.Node `yaml:"URL"`
+	ApiKeyEnvironmentVariable    yaml.Node `yaml:"ApiKeyEnvironmentVariable"`
+	PublicKeyEnvironmentVariable yaml.Node `yaml:"PublicKeyEnvironmentVariable"`
+	componentConfigs             ComponentConfigs
+	HTTPClient                   *http.Client
 }
 
 type ServiceConfigMap map[string]*ServiceConfig
