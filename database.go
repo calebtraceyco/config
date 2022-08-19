@@ -1,24 +1,26 @@
 package config_yaml
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
+	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/yaml.v3"
+	"net/url"
+	"strconv"
 )
 
 type DatabaseConfig struct {
-	Name             yaml.Node `yaml:"Name"`
-	Database         yaml.Node `yaml:"Database"`
-	Server           yaml.Node `yaml:"Server"`
-	Port             yaml.Node `yaml:"Port"`
-	Username         yaml.Node `yaml:"Username"`
-	Password         yaml.Node `yaml:"Password"`
-	Scheme           yaml.Node `yaml:"Scheme"`
-	MongoClient      *mongo.Client
-	componentConfigs ComponentConfigs
+	Name               yaml.Node `yaml:"Name"`
+	Database           yaml.Node `yaml:"Database"`
+	Server             yaml.Node `yaml:"Server"`
+	Username           yaml.Node `yaml:"Username"`
+	Password           yaml.Node `yaml:"Password"`
+	Scheme             yaml.Node `yaml:"Scheme"`
+	MaxConnections     yaml.Node `yaml:"MaxConnections"`
+	MaxIdleConnections yaml.Node `yaml:"MaxIdleConnections"`
+	DB                 *sql.DB
+	componentConfigs   ComponentConfigs
 }
 
 type DatabaseConfigMap map[string]*DatabaseConfig
@@ -27,32 +29,40 @@ func (s *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
 	return s.componentConfigs
 }
 
-func InitDbService(dbc *DatabaseConfig) (*mongo.Client, []error) {
-	var errs []error
-
-	if dbc.Password.Value == "" {
-		errs = append(errs, MissingField("Password"))
-		return nil, errs
-	}
-	connectionString := ""
-	switch dbc.Scheme.Value {
-	case "mongo":
-		{
-			connectionString = "mongodb://" + dbc.Username.Value + ":" + dbc.Password.Value + "@" + dbc.Server.Value + ":" + dbc.Port.Value
-		}
+func InitDbService(dbc *DatabaseConfig, appName string) (*sql.DB, error) {
+	if dbc.Password.Value == "" || dbc.Server.Value == "" || dbc.Username.Value == "" || dbc.Database.Value == "" {
+		log.Errorf("Missing DB config feilds for %v", dbc)
 	}
 
-	ctx := context.Background()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connectionString))
+	query := url.Values{}
+	u := &url.URL{
+		Scheme:   dbc.Scheme.Value,
+		User:     url.UserPassword(dbc.Username.Value, dbc.Password.Value),
+		Host:     dbc.Server.Value,
+		RawQuery: query.Encode(),
+	}
+	connectionString := u.String() + "/" + dbc.Database.Value + "?sslmode=disable"
+
+	db, err := sql.Open(dbc.Scheme.Value, connectionString)
 	if err != nil {
-		log.Fatalf("unable to open connection with database; err: %v", err.Error())
+		log.Errorf("failed to open postgres connection; err: %v", err.Error())
+		return nil, fmt.Errorf("cannot open connection to the database")
 	}
-	err = client.Ping(ctx, nil)
-	if err != nil {
-		log.Fatalln(err)
+	if dbc.MaxConnections.Value != "" {
+		mc, _ := strconv.Atoi(dbc.MaxConnections.Value)
+		db.SetMaxOpenConns(mc)
+	}
+	if dbc.MaxIdleConnections.Value != "" {
+		mic, _ := strconv.Atoi(dbc.MaxIdleConnections.Value)
+		db.SetMaxIdleConns(mic)
 	}
 
-	return client, nil
+	pingErr := db.Ping()
+	if pingErr != nil {
+		return nil, fmt.Errorf("unable to ping database; err: %v", pingErr.Error())
+	}
+
+	return db, nil
 }
 
 func (dcm *DatabaseConfigMap) UnmarshalYAML(node *yaml.Node) error {

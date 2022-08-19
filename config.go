@@ -1,11 +1,11 @@
 package config_yaml
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/mongo"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"log"
+	//"log"
 	"net/http"
 	"os"
 )
@@ -34,10 +34,10 @@ type ComponentConfigs struct {
 
 type ClientConfigFunc func(ClientConfig) *http.Client
 
-type MongoConfigFunc func(cfg *DatabaseConfig) (*mongo.Client, []error)
+type DbConfigBuildFn func(cfg *DatabaseConfig, appName string) (*sql.DB, error)
 
 func NewFromFile(configPath string) *Config {
-	logrus.Infoln(configPath)
+	log.Infoln(configPath)
 	conf, confErrs := newFromFile(&builder{}, InitDbService, configPath)
 
 	if len(confErrs) > 0 || conf == nil {
@@ -52,9 +52,9 @@ func NewFromFile(configPath string) *Config {
 	return conf
 }
 
-func newFromFile(b configBuilder, dbBuilderFn MongoConfigFunc, configPath string) (*Config, []error) {
+func newFromFile(b configBuilder, dbBuilderFn DbConfigBuildFn, configPath string) (*Config, []error) {
 	var errs []error
-	var dbErrs []error
+	var dbErr error
 	var err error
 
 	configFile, err := b.Load(configPath)
@@ -65,7 +65,7 @@ func newFromFile(b configBuilder, dbBuilderFn MongoConfigFunc, configPath string
 	defer func(configFile *os.File) {
 		closeErr := configFile.Close()
 		if closeErr != nil {
-			logrus.Errorln(closeErr.Error())
+			log.Errorln(closeErr.Error())
 		}
 	}(configFile)
 
@@ -74,18 +74,17 @@ func newFromFile(b configBuilder, dbBuilderFn MongoConfigFunc, configPath string
 		return nil, []error{err}
 	}
 
-	clientFn := b.ClientInit()
+	//clientFn := b.ClientInit()
 
-	for _, svcConfig := range b.Get().ServiceConfigs {
-		svcConfig.HTTPClient = clientFn(svcConfig.SvcComponentConfigs().Client)
-	}
+	//for _, svcConfig := range b.Get().ServiceConfigs {
+	//	svcConfig.HTTPClient = clientFn(svcConfig.SvcComponentConfigs().Client)
+	//}
 
 	for _, dbConfig := range b.Get().DatabaseConfigs {
-		dbConfig.MongoClient, dbErrs = dbBuilderFn(dbConfig)
-		if dbErrs != nil && len(dbErrs) > 0 {
-			for _, dbErr := range dbErrs {
-				errs = append(errs, dbErr)
-			}
+		dbConfig.DB, dbErr = dbBuilderFn(dbConfig, b.Get().AppName.Value)
+		if dbErr != nil {
+			log.Error(err.Error())
+			errs = append(errs, dbErr)
 		}
 	}
 
