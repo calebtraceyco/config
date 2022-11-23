@@ -1,12 +1,12 @@
 module github.com/calebtracey/config-yaml
 
-go 1.18
+go 1.19
 
 require (
 	github.com/gocolly/colly v1.2.0
-	github.com/lib/pq v1.10.6
-	github.com/sirupsen/logrus v1.8.1
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
+	github.com/lib/pq v1.10.7
+	github.com/sirupsen/logrus v1.9.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -21,7 +21,6 @@ require (
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20120816061221-3af4cd4741ca // indirect
-	github.com/stretchr/testify v1.6.1 // indirect
 	github.com/temoto/robotstxt v1.1.2 // indirect
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect

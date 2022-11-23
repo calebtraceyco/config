@@ -60,7 +60,6 @@ func (b *builder) Read(configData io.Reader) error {
 func initialConfig(data io.Reader) (*Config, error) {
 	buf := new(bytes.Buffer)
 	_, buffErr := io.Copy(buf, data)
-	//dataBytes, readErr := ioutil.ReadAll(data)
 	if buffErr != nil {
 		return nil, fmt.Errorf("error reading config data; err: %v", buffErr.Error())
 	}
