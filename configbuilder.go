@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io"
-	"io/ioutil"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -59,21 +58,19 @@ func (b *builder) Read(configData io.Reader) error {
 }
 
 func initialConfig(data io.Reader) (*Config, error) {
-	dataBytes, readErr := ioutil.ReadAll(data)
-	if readErr != nil {
-		return nil, fmt.Errorf("error reading config data; err: %v", readErr.Error())
+	buf := new(bytes.Buffer)
+	_, buffErr := io.Copy(buf, data)
+	if buffErr != nil {
+		return nil, fmt.Errorf("error reading config data; err: %v", buffErr.Error())
 	}
-
-	reader := bytes.NewReader(dataBytes)
 	c := &Config{}
-	decoder := yaml.NewDecoder(reader)
-	decodeErr := decoder.Decode(&c)
+	err := yaml.Unmarshal(buf.Bytes(), &c)
 
-	if decodeErr != nil {
-		log.Error(decodeErr)
-		return nil, fmt.Errorf("error decoding config data; err: %v", decodeErr.Error())
+	if err != nil {
+		log.Error(err)
+		return nil, fmt.Errorf("error unmarshalling config data; err: %v", err.Error())
 	}
-	c.Hash = fmt.Sprintf("%x", md5.Sum(dataBytes))
+	c.Hash = fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
 
 	return c, nil
 }
