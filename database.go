@@ -7,20 +7,21 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"net/url"
+	"os"
 	"strconv"
 )
 
 type DatabaseConfig struct {
-	Name               yaml.Node `yaml:"Name"`
-	Database           yaml.Node `yaml:"Database"`
-	Server             yaml.Node `yaml:"Server"`
-	Username           yaml.Node `yaml:"Username"`
-	Password           yaml.Node `yaml:"Password"`
-	Scheme             yaml.Node `yaml:"Scheme"`
-	MaxConnections     yaml.Node `yaml:"MaxConnections"`
-	MaxIdleConnections yaml.Node `yaml:"MaxIdleConnections"`
-	DB                 *sql.DB
-	componentConfigs   ComponentConfigs
+	Name                yaml.Node `yaml:"Name"`
+	Database            yaml.Node `yaml:"Database"`
+	Server              yaml.Node `yaml:"Server"`
+	Username            yaml.Node `yaml:"Username"`
+	PasswordEnvVariable yaml.Node `yaml:"PasswordEnvVariable"`
+	Scheme              yaml.Node `yaml:"Scheme"`
+	MaxConnections      yaml.Node `yaml:"MaxConnections"`
+	MaxIdleConnections  yaml.Node `yaml:"MaxIdleConnections"`
+	DB                  *sql.DB
+	componentConfigs    ComponentConfigs
 }
 
 type DatabaseConfigMap map[string]*DatabaseConfig
@@ -30,14 +31,14 @@ func (s *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
 }
 
 func InitDbService(dbc *DatabaseConfig, appName string) (*sql.DB, error) {
-	if dbc.Password.Value == "" || dbc.Server.Value == "" || dbc.Username.Value == "" || dbc.Database.Value == "" {
+	if dbc.PasswordEnvVariable.Value == "" || dbc.Server.Value == "" || dbc.Username.Value == "" || dbc.Database.Value == "" {
 		log.Errorf("Missing DB config feilds for %v", dbc)
 	}
-
+	password := os.Getenv(dbc.PasswordEnvVariable.Value)
 	query := url.Values{}
 	u := &url.URL{
 		Scheme:   dbc.Scheme.Value,
-		User:     url.UserPassword(dbc.Username.Value, dbc.Password.Value),
+		User:     url.UserPassword(dbc.Username.Value, password),
 		Host:     dbc.Server.Value,
 		RawQuery: query.Encode(),
 	}
