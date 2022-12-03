@@ -4,18 +4,15 @@ import (
 	"bytes"
 	"crypto/md5"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io"
-	"strconv"
-
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
-	"time"
 )
 
 type configBuilder interface {
-	ClientInit() ClientConfigFunc
+	InitClient() ClientConfigFunc
 	Load(string) (*os.File, error)
 	Read(io.Reader) error
 	Get() *Config
@@ -25,6 +22,18 @@ type configBuilder interface {
 type builder struct {
 	config     *Config
 	configPath string
+}
+
+func (b *builder) InitClient() ClientConfigFunc {
+	return func(cc ClientConfig) *http.Client {
+		client, errs := createHTTPClient(cc)
+		if len(errs) > 0 {
+			for _, err := range errs {
+				panic(err)
+			}
+		}
+		return client
+	}
 }
 
 func (b *builder) Get() *Config {
@@ -73,51 +82,4 @@ func initialConfig(data io.Reader) (*Config, error) {
 	c.Hash = fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
 
 	return c, nil
-}
-
-func (b *builder) ClientInit() ClientConfigFunc {
-	buildClientFn := func(config ClientConfig) *http.Client {
-		client, errs := createHTTPClient(config)
-		if errs != nil && len(errs) > 0 {
-			for _, err := range errs {
-				log.Panic(err.Error())
-			}
-		}
-		return client
-	}
-	return buildClientFn
-}
-
-func createHTTPClient(config ClientConfig) (*http.Client, []error) {
-	var errs []error
-	timeout, err := strconv.Atoi(config.Timeout.Value)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	idleConnTimeout, err := strconv.Atoi(config.IdleConnTimeout.Value)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	maxIdleConnsPerHost, err := strconv.Atoi(config.MaxIdleConsPerHost.Value)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	maxConnsPerHost, err := strconv.Atoi(config.MaxConsPerHost.Value)
-	if err != nil {
-		errs = append(errs, err)
-	}
-
-	if errs != nil && len(errs) > 0 {
-		return nil, errs
-	}
-
-	return &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
-		Transport: &http.Transport{
-			IdleConnTimeout:     time.Duration(idleConnTimeout) * time.Second,
-			MaxIdleConnsPerHost: maxIdleConnsPerHost,
-			MaxConnsPerHost:     maxConnsPerHost,
-			DisableCompression:  false,
-		},
-	}, nil
 }
