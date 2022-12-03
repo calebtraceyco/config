@@ -8,14 +8,16 @@ import (
 )
 
 type Config struct {
-	AppName          yaml.Node         `yaml:"AppName"`
-	Env              yaml.Node         `yaml:"Env"`
-	Port             yaml.Node         `yaml:"Port"`
+	AppName yaml.Node `yaml:"AppName"`
+	Env     yaml.Node `yaml:"Env"`
+	Port    yaml.Node `yaml:"Port"`
+
 	ComponentConfigs ComponentConfigs  `yaml:"ComponentConfigs"`
-	DatabaseConfigs  DatabaseConfigMap `yaml:"DatabaseConfigs"`
-	ServiceConfigs   ServiceConfigMap  `yaml:"ServiceConfigs"`
-	CrawlerConfigs   CrawlConfigMap    `yaml:"CrawlerConfigs"`
-	Hash             string            `yaml:"Hash"`
+	Databases        DatabaseConfigMap `yaml:"Databases"`
+	Services         ServiceConfigMap  `yaml:"Services"`
+	Crawlers         CrawlConfigMap    `yaml:"Crawlers"`
+
+	Hash string `yaml:"Hash"`
 }
 
 type ComponentConfigs struct {
@@ -60,46 +62,51 @@ func newFromFile(b configBuilder, configPath string) (*Config, []error) {
 
 	}
 
-	for _, cConfig := range b.Get().CrawlerConfigs {
-		cConfig.Collector, collErr = cConfig.CrawlerService()
+	clientFn := b.ClientFn()
+
+	for _, service := range b.Config().Services {
+		service.Client = clientFn(service.MergedComponentConfigs().Client)
+	}
+
+	for _, crawler := range b.Config().Crawlers {
+		crawler.Collector, collErr = crawler.CrawlerService()
 		if collErr != nil {
 			log.Error(collErr.Error())
 			errs = append(errs, collErr)
 		}
 	}
 
-	for _, dbConfig := range b.Get().DatabaseConfigs {
-		dbConfig.DB, dbErr = dbConfig.DatabaseService()
+	for _, database := range b.Config().Databases {
+		database.DB, dbErr = database.DatabaseService()
 		if dbErr != nil {
 			log.Error(dbErr.Error())
 			errs = append(errs, dbErr)
 		}
 	}
-
-	return b.Get(), errs
+	return b.Config(), errs
 }
 
-func (c *Config) DatabaseConfig(name string) (*DatabaseConfig, error) {
-
-	if database, ok := c.DatabaseConfigs[name]; ok {
+func (c *Config) Database(name string) (*DatabaseConfig, error) {
+	if database, ok := c.Databases[name]; ok {
 		return database, nil
 	}
+	// return error if the database not found in config
 	return nil, fmt.Errorf("database config: %v not found", name)
 
 }
 
-func (c *Config) ServiceConfig(name string) (*ServiceConfig, error) {
-
-	if service, ok := c.ServiceConfigs[name]; ok {
+func (c *Config) Service(name string) (*ServiceConfig, error) {
+	if service, ok := c.Services[name]; ok {
 		return service, nil
 	}
+	// return error if the service not found in config
 	return nil, fmt.Errorf("service config: %v not found", name)
 }
 
-func (c *Config) CrawlConfig(name string) (*CrawlConfig, error) {
-
-	if crawler, ok := c.CrawlerConfigs[name]; ok {
+func (c *Config) Crawler(name string) (*CrawlerConfig, error) {
+	if crawler, ok := c.Crawlers[name]; ok {
 		return crawler, nil
 	}
+	// return error if the crawler not found in config
 	return nil, fmt.Errorf("crawler config: %v not found", name)
 }

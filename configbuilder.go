@@ -3,7 +3,10 @@ package config_yaml
 import (
 	"bytes"
 	"crypto/md5"
+	"errors"
 	"fmt"
+	"github.com/imdario/mergo"
+	"github.com/jinzhu/copier"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -12,10 +15,10 @@ import (
 )
 
 type configBuilder interface {
-	InitClient() ClientConfigFunc
+	ClientFn() ClientConfigFromFn
 	Load(string) (*os.File, error)
 	Read(io.Reader) error
-	Get() *Config
+	Config() *Config
 	Path() string
 }
 
@@ -24,19 +27,17 @@ type builder struct {
 	configPath string
 }
 
-func (b *builder) InitClient() ClientConfigFunc {
-	return func(cc ClientConfig) *http.Client {
-		client, errs := createHTTPClient(cc)
-		if len(errs) > 0 {
-			for _, err := range errs {
-				panic(err)
-			}
-		}
-		return client
+type ClientConfigFromFn func(ClientConfig) *http.Client
+
+func (b *builder) ClientFn() ClientConfigFromFn {
+	buildClientFn := func(cc ClientConfig) *http.Client {
+		return createHTTPClient(cc)
 	}
+
+	return buildClientFn
 }
 
-func (b *builder) Get() *Config {
+func (b *builder) Config() *Config {
 	return b.config
 }
 
@@ -57,9 +58,13 @@ func (b *builder) Load(path string) (*os.File, error) {
 }
 
 func (b *builder) Read(configData io.Reader) error {
-	config, errs := initialConfig(configData)
-	if errs != nil {
-		return errs
+	config, err := initialConfig(configData)
+	if err != nil {
+		return err
+	}
+
+	if mergeErr := mergeServiceComponentConfigs(config); mergeErr != nil {
+		return fmt.Errorf("error merging component configs, err: %w", mergeErr)
 	}
 
 	b.config = config
@@ -72,14 +77,45 @@ func initialConfig(data io.Reader) (*Config, error) {
 	if buffErr != nil {
 		return nil, fmt.Errorf("error reading config data; err: %v", buffErr.Error())
 	}
-	c := &Config{}
-	err := yaml.Unmarshal(buf.Bytes(), &c)
+	config := &Config{}
+	err := yaml.Unmarshal(buf.Bytes(), &config)
 
 	if err != nil {
 		log.Error(err)
 		return nil, fmt.Errorf("error unmarshalling config data; err: %v", err.Error())
 	}
-	c.Hash = fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
+	config.Hash = fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
 
-	return c, nil
+	return config, nil
+}
+
+func mergeServiceComponentConfigs(c *Config) error {
+	componentConfigs := c.ComponentConfigs
+	for i, service := range c.Services {
+		err := mergeConfigs(&service.ComponentConfigOverrides, &componentConfigs, &service.mergedComponentConfigs)
+		if err != nil {
+			return fmt.Errorf("error merging component config: %v, err %w", i, err)
+		}
+	}
+	return nil
+}
+
+func mergeConfigs(override *ComponentConfigs, defaultC *ComponentConfigs, mergedC *ComponentConfigs) error {
+	if mergedC == nil {
+		return errors.New("nil pointer passed for mergedC")
+	}
+
+	if override != nil {
+		if err := copier.Copy(mergedC, override); err != nil {
+			return err
+		}
+	}
+
+	if defaultC != nil {
+		if err := mergo.Merge(mergedC, defaultC); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -3,6 +3,7 @@ package config_yaml
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
+	"net/http"
 )
 
 type ServiceConfig struct {
@@ -10,14 +11,26 @@ type ServiceConfig struct {
 	URL                          yaml.Node `yaml:"URL"`
 	ApiKeyEnvironmentVariable    yaml.Node `yaml:"ApiKeyEnvironmentVariable"`
 	PublicKeyEnvironmentVariable yaml.Node `yaml:"PublicKeyEnvironmentVariable"`
-	componentConfigs             ComponentConfigs
+	ComponentConfigOverrides     ComponentConfigs
+	Endpoints                    EndpointMap
+
+	mergedComponentConfigs ComponentConfigs
+
+	Client *http.Client `json:"-"`
 	//HTTPClient                   *http.Client
 }
 
+type Endpoint struct {
+	Name string
+	Path string
+}
+
+type EndpointMap map[string]*Endpoint
+
 type ServiceConfigMap map[string]*ServiceConfig
 
-func (s *ServiceConfig) SvcComponentConfigs() ComponentConfigs {
-	return s.componentConfigs
+func (s *ServiceConfig) MergedComponentConfigs() ComponentConfigs {
+	return s.mergedComponentConfigs
 }
 
 func (scm *ServiceConfigMap) UnmarshalYAML(node *yaml.Node) error {
