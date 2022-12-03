@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-type CrawlConfig struct {
+type CrawlerConfig struct {
 	Name                   yaml.Node `yaml:"Name"`
 	AppsJSONPath           yaml.Node `yaml:"AppsJSONPath"`
 	TimeoutSeconds         yaml.Node `yaml:"TimeoutSeconds"`
@@ -27,18 +27,14 @@ type CrawlConfig struct {
 	componentConfigs       ComponentConfigs
 }
 
-type CrawlConfigMap map[string]*CrawlConfig
+type CrawlConfigMap map[string]*CrawlerConfig
 
-func (c *CrawlConfig) DbComponentConfigs() ComponentConfigs {
+func (c *CrawlerConfig) CrawlerComponentConfigs() ComponentConfigs {
 	return c.componentConfigs
 }
 
-func (c *CrawlConfig) CrawlerService() (*colly.Collector, error) {
-	timeout, err := strconv.Atoi(c.TimeoutSeconds.Value)
-
-	if err != nil {
-		return nil, err
-	}
+func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
+	timeout, _ := strconv.Atoi(c.TimeoutSeconds.Value)
 
 	tp := &http.Transport{
 		DialContext: (&net.Dialer{
@@ -56,7 +52,7 @@ func (c *CrawlConfig) CrawlerService() (*colly.Collector, error) {
 		colly.Async(true),
 		colly.MaxDepth(2),
 	)
-	err = coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
+	err := coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
 
 	if err != nil {
 		return nil, err
@@ -80,7 +76,7 @@ func (c *CrawlConfig) CrawlerService() (*colly.Collector, error) {
 
 func (ccm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
 	*ccm = CrawlConfigMap{}
-	var crawlers []CrawlConfig
+	var crawlers []CrawlerConfig
 
 	if decodeErr := node.Decode(&crawlers); decodeErr != nil {
 		return fmt.Errorf("decode error: %v", decodeErr.Error())
