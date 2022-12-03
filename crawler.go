@@ -29,15 +29,17 @@ type CrawlConfig struct {
 
 type CrawlConfigMap map[string]*CrawlConfig
 
-func (s *CrawlConfig) DbComponentConfigs() ComponentConfigs {
-	return s.componentConfigs
+func (c *CrawlConfig) DbComponentConfigs() ComponentConfigs {
+	return c.componentConfigs
 }
 
-func InitCrawlService(cc *CrawlConfig, appName string) (*colly.Collector, error) {
-	timeout, err := strconv.Atoi(cc.TimeoutSeconds.Value)
+func (c *CrawlConfig) CrawlerService() (*colly.Collector, error) {
+	timeout, err := strconv.Atoi(c.TimeoutSeconds.Value)
+
 	if err != nil {
 		return nil, err
 	}
+
 	tp := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   time.Second * time.Duration(timeout),
@@ -55,11 +57,14 @@ func InitCrawlService(cc *CrawlConfig, appName string) (*colly.Collector, error)
 		colly.MaxDepth(2),
 	)
 	err = coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
+
 	if err != nil {
 		return nil, err
 	}
-	coll.UserAgent = cc.UserAgent.Value
+
+	coll.UserAgent = c.UserAgent.Value
 	coll.WithTransport(tp)
+
 	coll.OnRequest(func(r *colly.Request) {
 		log.Println("Visiting", r.URL)
 	})

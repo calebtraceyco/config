@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type DatabaseConfig struct {
@@ -26,27 +27,28 @@ type DatabaseConfig struct {
 
 type DatabaseConfigMap map[string]*DatabaseConfig
 
-func (s *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
-	return s.componentConfigs
+func (dbc *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
+	return dbc.componentConfigs
 }
 
-func InitDbService(dbc *DatabaseConfig, appName string) (*sql.DB, error) {
+func (dbc *DatabaseConfig) DatabaseService() (*sql.DB, error) {
+
 	if dbc.PasswordEnvVariable.Value == "" || dbc.Server.Value == "" || dbc.Username.Value == "" || dbc.Database.Value == "" {
 		log.Errorf("Missing DB config feilds for %v", dbc)
 	}
-	password := os.Getenv(dbc.PasswordEnvVariable.Value)
-	query := url.Values{}
+
 	u := &url.URL{
 		Scheme:   dbc.Scheme.Value,
-		User:     url.UserPassword(dbc.Username.Value, password),
+		User:     url.UserPassword(dbc.Username.Value, os.Getenv(dbc.PasswordEnvVariable.Value)),
 		Host:     dbc.Server.Value,
-		RawQuery: query.Encode(),
+		RawQuery: url.Values{}.Encode(),
 	}
-	connectionString := u.String() + "/" + dbc.Database.Value + "?sslmode=disable"
 
-	db, err := sql.Open(dbc.Scheme.Value, connectionString)
+	db, err := sql.Open(dbc.Scheme.Value, strings.Join([]string{u.String(), "/", dbc.Database.Value, "?sslmode=disable"}, ""))
+
 	if err != nil {
 		log.Errorf("failed to open postgres connection; err: %v", err.Error())
+
 		return nil, fmt.Errorf("cannot open connection to the database")
 	}
 	if dbc.MaxConnections.Value != "" {
@@ -58,8 +60,7 @@ func InitDbService(dbc *DatabaseConfig, appName string) (*sql.DB, error) {
 		db.SetMaxIdleConns(mic)
 	}
 
-	pingErr := db.Ping()
-	if pingErr != nil {
+	if pingErr := db.Ping(); pingErr != nil {
 		return nil, fmt.Errorf("unable to ping database; err: %v", pingErr.Error())
 	}
 

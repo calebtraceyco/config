@@ -1,12 +1,9 @@
 package config_yaml
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/gocolly/colly"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"net/http"
 	"os"
 )
 
@@ -21,27 +18,14 @@ type Config struct {
 	Hash             string            `yaml:"Hash"`
 }
 
-type ClientConfig struct {
-	Timeout            yaml.Node `yaml:"Timeout"`
-	IdleConnTimeout    yaml.Node `yaml:"IdleConnTimeout"`
-	MaxIdleConsPerHost yaml.Node `yaml:"MaxIdleConsPerHost"`
-	MaxConsPerHost     yaml.Node `yaml:"MaxConsPerHost"`
-}
-
 type ComponentConfigs struct {
 	//TODO add logging
 	Client ClientConfig
 }
 
-type ClientConfigFunc func(ClientConfig) *http.Client
-
-type DbConfigBuildFn func(cfg *DatabaseConfig, appName string) (*sql.DB, error)
-
-type CrawlConfigBuildFn func(cfg *CrawlConfig, appName string) (*colly.Collector, error)
-
 func NewFromFile(configPath string) *Config {
 	log.Infoln(configPath)
-	conf, confErrs := newFromFile(&builder{}, InitDbService, InitCrawlService, configPath)
+	conf, confErrs := newFromFile(&builder{}, configPath)
 
 	if len(confErrs) > 0 || conf == nil {
 		for _, err := range confErrs {
@@ -55,7 +39,7 @@ func NewFromFile(configPath string) *Config {
 	return conf
 }
 
-func newFromFile(b configBuilder, dbBuilderFn DbConfigBuildFn, cBuilderFn CrawlConfigBuildFn, configPath string) (*Config, []error) {
+func newFromFile(b configBuilder, configPath string) (*Config, []error) {
 	var errs []error
 	var dbErr, collErr, err error
 
@@ -71,13 +55,13 @@ func newFromFile(b configBuilder, dbBuilderFn DbConfigBuildFn, cBuilderFn CrawlC
 		}
 	}(configFile)
 
-	err = b.Read(configFile)
-	if err != nil {
+	if err = b.Read(configFile); err != nil {
 		return nil, []error{err}
+
 	}
 
 	for _, cConfig := range b.Get().CrawlerConfigs {
-		cConfig.Collector, collErr = cBuilderFn(cConfig, b.Get().AppName.Value)
+		cConfig.Collector, collErr = cConfig.CrawlerService()
 		if collErr != nil {
 			log.Error(collErr.Error())
 			errs = append(errs, collErr)
@@ -85,7 +69,7 @@ func newFromFile(b configBuilder, dbBuilderFn DbConfigBuildFn, cBuilderFn CrawlC
 	}
 
 	for _, dbConfig := range b.Get().DatabaseConfigs {
-		dbConfig.DB, dbErr = dbBuilderFn(dbConfig, b.Get().AppName.Value)
+		dbConfig.DB, dbErr = dbConfig.DatabaseService()
 		if dbErr != nil {
 			log.Error(dbErr.Error())
 			errs = append(errs, dbErr)
@@ -95,38 +79,27 @@ func newFromFile(b configBuilder, dbBuilderFn DbConfigBuildFn, cBuilderFn CrawlC
 	return b.Get(), errs
 }
 
-func (c *Config) GetDatabaseConfig(name string) (*DatabaseConfig, error) {
-	var database *DatabaseConfig
-	database, ok := c.DatabaseConfigs[name]
+func (c *Config) DatabaseConfig(name string) (*DatabaseConfig, error) {
 
-	if !ok {
-		err := fmt.Errorf("database config: %v not found", name)
-		return nil, err
+	if database, ok := c.DatabaseConfigs[name]; ok {
+		return database, nil
 	}
+	return nil, fmt.Errorf("database config: %v not found", name)
 
-	return database, nil
 }
 
-func (c *Config) GetServiceConfig(name string) (*ServiceConfig, error) {
-	var service *ServiceConfig
-	service, ok := c.ServiceConfigs[name]
+func (c *Config) ServiceConfig(name string) (*ServiceConfig, error) {
 
-	if !ok {
-		err := fmt.Errorf("service config: %v not found", name)
-		return nil, err
+	if service, ok := c.ServiceConfigs[name]; ok {
+		return service, nil
 	}
-
-	return service, nil
+	return nil, fmt.Errorf("service config: %v not found", name)
 }
 
-func (c *Config) GetCrawlConfig(name string) (*CrawlConfig, error) {
-	var crawler *CrawlConfig
-	crawler, ok := c.CrawlerConfigs[name]
+func (c *Config) CrawlConfig(name string) (*CrawlConfig, error) {
 
-	if !ok {
-		err := fmt.Errorf("crawler config: %v not found", name)
-		return nil, err
+	if crawler, ok := c.CrawlerConfigs[name]; ok {
+		return crawler, nil
 	}
-
-	return crawler, nil
+	return nil, fmt.Errorf("crawler config: %v not found", name)
 }
