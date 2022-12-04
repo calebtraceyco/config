@@ -3,7 +3,6 @@ package config_yaml
 import (
 	"gopkg.in/yaml.v3"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -12,23 +11,24 @@ type ClientConfig struct {
 	IdleConnTimeout    yaml.Node `yaml:"IdleConnTimeout"`
 	MaxIdleConsPerHost yaml.Node `yaml:"MaxIdleConsPerHost"`
 	MaxConsPerHost     yaml.Node `yaml:"MaxConsPerHost"`
-	DisableCompression yaml.Node `yaml:"DisableCompression"`
-	InsecureSkipVerify yaml.Node `yaml:"InsecureSkipVerify"`
+	DisableCompression configFlag
+	InsecureSkipVerify configFlag
 }
 
-func createHTTPClient(config ClientConfig) *http.Client {
-	timeout, _ := strconv.Atoi(config.Timeout.Value)
-	idleConnTimeout, _ := strconv.Atoi(config.IdleConnTimeout.Value)
-	maxIdleConnsPerHost, _ := strconv.Atoi(config.MaxIdleConsPerHost.Value)
-	maxConnsPerHost, _ := strconv.Atoi(config.MaxConsPerHost.Value)
+func createHTTPClient(cc ClientConfig) *http.Client {
+	disableCompression := false
+
+	if cc.DisableCompression == True {
+		disableCompression = true
+	}
 
 	return &http.Client{
-		Timeout: time.Duration(timeout) * time.Second,
+		Timeout: time.Duration(toInt(cc.Timeout.Value)) * time.Second,
 		Transport: &http.Transport{
-			IdleConnTimeout:     time.Duration(idleConnTimeout) * time.Second,
-			MaxIdleConnsPerHost: maxIdleConnsPerHost,
-			MaxConnsPerHost:     maxConnsPerHost,
-			DisableCompression:  false,
+			IdleConnTimeout:     time.Duration(toInt(cc.IdleConnTimeout.Value)) * time.Second,
+			MaxIdleConnsPerHost: toInt(cc.MaxIdleConsPerHost.Value),
+			MaxConnsPerHost:     toInt(cc.MaxConsPerHost.Value),
+			DisableCompression:  disableCompression,
 		},
 	}
 }

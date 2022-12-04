@@ -17,7 +17,6 @@ type ServiceConfig struct {
 	mergedComponentConfigs ComponentConfigs
 
 	Client *http.Client `json:"-"`
-	//HTTPClient                   *http.Client
 }
 
 type Endpoint struct {
@@ -33,8 +32,8 @@ func (s *ServiceConfig) MergedComponentConfigs() ComponentConfigs {
 	return s.mergedComponentConfigs
 }
 
-func (scm *ServiceConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*scm = ServiceConfigMap{}
+func (sm *ServiceConfigMap) UnmarshalYAML(node *yaml.Node) error {
+	*sm = ServiceConfigMap{}
 	var services []ServiceConfig
 
 	if decodeErr := node.Decode(&services); decodeErr != nil {
@@ -42,14 +41,12 @@ func (scm *ServiceConfigMap) UnmarshalYAML(node *yaml.Node) error {
 	}
 
 	for _, service := range services {
-		var serviceString string
+		var serviceKey string
 		serviceCopy := service
-		serviceErr := service.Name.Decode(&serviceString)
-		if serviceErr != nil {
+		if serviceErr := service.Name.Decode(&serviceKey); serviceErr != nil {
 			return fmt.Errorf("decode error: %v", serviceErr.Error())
 		}
-		(*scm)[serviceString] = &serviceCopy
+		(*sm)[serviceKey] = &serviceCopy
 	}
-
 	return nil
 }

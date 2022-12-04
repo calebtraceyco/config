@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"net"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -33,18 +32,17 @@ func (c *CrawlerConfig) CrawlerComponentConfigs() ComponentConfigs {
 	return c.componentConfigs
 }
 
-func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
-	timeout, _ := strconv.Atoi(c.TimeoutSeconds.Value)
+func (c *CrawlerConfig) CrawlerCollector() (*colly.Collector, error) {
 
-	tp := &http.Transport{
+	transport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   time.Second * time.Duration(timeout),
+			Timeout:   time.Second * time.Duration(toInt(c.TimeoutSeconds.Value)),
 			KeepAlive: 180 * time.Second,
 		}).DialContext,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   2 * time.Second,
-		ExpectContinueTimeout: time.Duration(timeout) * time.Second,
+		ExpectContinueTimeout: time.Duration(toInt(c.TimeoutSeconds.Value)) * time.Second,
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
 
@@ -52,14 +50,14 @@ func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
 		colly.Async(true),
 		colly.MaxDepth(2),
 	)
-	err := coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
 
+	err := coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
 	if err != nil {
 		return nil, err
 	}
 
 	coll.UserAgent = c.UserAgent.Value
-	coll.WithTransport(tp)
+	coll.WithTransport(transport)
 
 	coll.OnRequest(func(r *colly.Request) {
 		log.Println("Visiting", r.URL)
@@ -74,23 +72,22 @@ func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
 	return coll, nil
 }
 
-func (ccm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*ccm = CrawlConfigMap{}
+func (cm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
+	*cm = CrawlConfigMap{}
 	var crawlers []CrawlerConfig
 
 	if decodeErr := node.Decode(&crawlers); decodeErr != nil {
 		return fmt.Errorf("decode error: %v", decodeErr.Error())
 	}
 
-	for _, c := range crawlers {
-		var cString string
-		cCopy := c
-		serviceErr := c.Name.Decode(&cString)
-		if serviceErr != nil {
+	for _, crawler := range crawlers {
+		var crawlerKey string
+		crawlerCopy := crawler
+
+		if serviceErr := crawler.Name.Decode(&crawlerKey); serviceErr != nil {
 			return fmt.Errorf("decode error: %v", serviceErr.Error())
 		}
-		(*ccm)[cString] = &cCopy
+		(*cm)[crawlerKey] = &crawlerCopy
 	}
-
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type configBuilder interface {
@@ -33,7 +34,6 @@ func (b *builder) ClientFn() ClientConfigFromFn {
 	buildClientFn := func(cc ClientConfig) *http.Client {
 		return createHTTPClient(cc)
 	}
-
 	return buildClientFn
 }
 
@@ -66,22 +66,19 @@ func (b *builder) Read(configData io.Reader) error {
 	if mergeErr := mergeServiceComponentConfigs(config); mergeErr != nil {
 		return fmt.Errorf("error merging component configs, err: %w", mergeErr)
 	}
-
 	b.config = config
 	return nil
 }
 
 func initialConfig(data io.Reader) (*Config, error) {
 	buf := new(bytes.Buffer)
-	_, buffErr := io.Copy(buf, data)
-	if buffErr != nil {
+
+	if _, buffErr := io.Copy(buf, data); buffErr != nil {
 		return nil, fmt.Errorf("error reading config data; err: %v", buffErr.Error())
 	}
-	config := &Config{}
-	err := yaml.Unmarshal(buf.Bytes(), &config)
 
-	if err != nil {
-		log.Error(err)
+	config := &Config{}
+	if err := yaml.Unmarshal(buf.Bytes(), &config); err != nil {
 		return nil, fmt.Errorf("error unmarshalling config data; err: %v", err.Error())
 	}
 	config.Hash = fmt.Sprintf("%x", md5.Sum(buf.Bytes()))
@@ -116,6 +113,13 @@ func mergeConfigs(override *ComponentConfigs, defaultC *ComponentConfigs, merged
 			return err
 		}
 	}
-
 	return nil
+}
+
+func toInt(str string) int {
+	res, err := strconv.Atoi(str)
+	if err != nil {
+		log.Errorf("strconv error for %s, err: %v", str, err)
+	}
+	return res
 }

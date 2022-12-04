@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -48,18 +47,14 @@ func (dbc *DatabaseConfig) DatabaseService() (*sql.DB, error) {
 
 	if err != nil {
 		log.Errorf("failed to open postgres connection; err: %v", err.Error())
-
 		return nil, fmt.Errorf("cannot open connection to the database")
 	}
 	if dbc.MaxConnections.Value != "" {
-		mc, _ := strconv.Atoi(dbc.MaxConnections.Value)
-		db.SetMaxOpenConns(mc)
+		db.SetMaxOpenConns(toInt(dbc.MaxConnections.Value))
 	}
 	if dbc.MaxIdleConnections.Value != "" {
-		mic, _ := strconv.Atoi(dbc.MaxIdleConnections.Value)
-		db.SetMaxIdleConns(mic)
+		db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
 	}
-
 	if pingErr := db.Ping(); pingErr != nil {
 		return nil, fmt.Errorf("unable to ping database; err: %v", pingErr.Error())
 	}
@@ -67,8 +62,8 @@ func (dbc *DatabaseConfig) DatabaseService() (*sql.DB, error) {
 	return db, nil
 }
 
-func (dcm *DatabaseConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*dcm = DatabaseConfigMap{}
+func (dm *DatabaseConfigMap) UnmarshalYAML(node *yaml.Node) error {
+	*dm = DatabaseConfigMap{}
 	var databases []DatabaseConfig
 
 	if decodeErr := node.Decode(&databases); decodeErr != nil {
@@ -76,14 +71,13 @@ func (dcm *DatabaseConfigMap) UnmarshalYAML(node *yaml.Node) error {
 	}
 
 	for _, db := range databases {
-		var dbString string
+		var databaseKey string
 		dbCopy := db
-		serviceErr := db.Name.Decode(&dbString)
-		if serviceErr != nil {
-			return fmt.Errorf("decode error: %v", serviceErr.Error())
-		}
-		(*dcm)[dbString] = &dbCopy
-	}
 
+		if databaseErr := db.Name.Decode(&databaseKey); databaseErr != nil {
+			return fmt.Errorf("decode error: %v", databaseErr.Error())
+		}
+		(*dm)[databaseKey] = &dbCopy
+	}
 	return nil
 }
