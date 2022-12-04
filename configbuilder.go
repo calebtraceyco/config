@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 type configBuilder interface {
@@ -113,4 +114,12 @@ func mergeConfigs(override *ComponentConfigs, defaultC *ComponentConfigs, merged
 		}
 	}
 	return nil
+}
+
+func toInt(str string) int {
+	res, err := strconv.Atoi(str)
+	if err != nil {
+		log.Errorf("strconv error for %s, err: %v", str, err)
+	}
+	return res
 }

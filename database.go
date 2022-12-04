@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -51,12 +50,10 @@ func (dbc *DatabaseConfig) DatabaseService() (*sql.DB, error) {
 		return nil, fmt.Errorf("cannot open connection to the database")
 	}
 	if dbc.MaxConnections.Value != "" {
-		mc, _ := strconv.Atoi(dbc.MaxConnections.Value)
-		db.SetMaxOpenConns(mc)
+		db.SetMaxOpenConns(toInt(dbc.MaxConnections.Value))
 	}
 	if dbc.MaxIdleConnections.Value != "" {
-		mic, _ := strconv.Atoi(dbc.MaxIdleConnections.Value)
-		db.SetMaxIdleConns(mic)
+		db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
 	}
 	if pingErr := db.Ping(); pingErr != nil {
 		return nil, fmt.Errorf("unable to ping database; err: %v", pingErr.Error())

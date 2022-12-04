@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"net"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -34,17 +33,16 @@ func (c *CrawlerConfig) CrawlerComponentConfigs() ComponentConfigs {
 }
 
 func (c *CrawlerConfig) CrawlerCollector() (*colly.Collector, error) {
-	timeout, _ := strconv.Atoi(c.TimeoutSeconds.Value)
 
-	tp := &http.Transport{
+	transport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   time.Second * time.Duration(timeout),
+			Timeout:   time.Second * time.Duration(toInt(c.TimeoutSeconds.Value)),
 			KeepAlive: 180 * time.Second,
 		}).DialContext,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   2 * time.Second,
-		ExpectContinueTimeout: time.Duration(timeout) * time.Second,
+		ExpectContinueTimeout: time.Duration(toInt(c.TimeoutSeconds.Value)) * time.Second,
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
 
@@ -59,7 +57,7 @@ func (c *CrawlerConfig) CrawlerCollector() (*colly.Collector, error) {
 	}
 
 	coll.UserAgent = c.UserAgent.Value
-	coll.WithTransport(tp)
+	coll.WithTransport(transport)
 
 	coll.OnRequest(func(r *colly.Request) {
 		log.Println("Visiting", r.URL)

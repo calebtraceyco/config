@@ -7,6 +7,14 @@ import (
 	"os"
 )
 
+type configFlag int
+
+const (
+	Unset configFlag = iota
+	True
+	False
+)
+
 type Config struct {
 	AppName yaml.Node `yaml:"AppName"`
 	Env     yaml.Node `yaml:"Env"`
