@@ -33,7 +33,7 @@ func (c *CrawlerConfig) CrawlerComponentConfigs() ComponentConfigs {
 	return c.componentConfigs
 }
 
-func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
+func (c *CrawlerConfig) CrawlerCollector() (*colly.Collector, error) {
 	timeout, _ := strconv.Atoi(c.TimeoutSeconds.Value)
 
 	tp := &http.Transport{
@@ -52,8 +52,8 @@ func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
 		colly.Async(true),
 		colly.MaxDepth(2),
 	)
-	err := coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
 
+	err := coll.Limit(&colly.LimitRule{DomainGlob: "*", RandomDelay: 1 * time.Second, Parallelism: 6})
 	if err != nil {
 		return nil, err
 	}
@@ -74,23 +74,22 @@ func (c *CrawlerConfig) CrawlerService() (*colly.Collector, error) {
 	return coll, nil
 }
 
-func (ccm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*ccm = CrawlConfigMap{}
+func (cm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
+	*cm = CrawlConfigMap{}
 	var crawlers []CrawlerConfig
 
 	if decodeErr := node.Decode(&crawlers); decodeErr != nil {
 		return fmt.Errorf("decode error: %v", decodeErr.Error())
 	}
 
-	for _, c := range crawlers {
-		var cString string
-		cCopy := c
-		serviceErr := c.Name.Decode(&cString)
-		if serviceErr != nil {
+	for _, crawler := range crawlers {
+		var crawlerKey string
+		crawlerCopy := crawler
+
+		if serviceErr := crawler.Name.Decode(&crawlerKey); serviceErr != nil {
 			return fmt.Errorf("decode error: %v", serviceErr.Error())
 		}
-		(*ccm)[cString] = &cCopy
+		(*cm)[crawlerKey] = &crawlerCopy
 	}
-
 	return nil
 }
