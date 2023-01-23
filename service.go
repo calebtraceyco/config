@@ -19,6 +19,10 @@ type ServiceConfig struct {
 	Client *http.Client `json:"-"`
 }
 
+func (s *ServiceConfig) SetClient(cc ClientConfig) {
+	s.Client = createHTTPClient(cc)
+}
+
 type Endpoint struct {
 	Name string
 	Path string
