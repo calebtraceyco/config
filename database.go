@@ -24,6 +24,10 @@ type DatabaseConfig struct {
 	componentConfigs    ComponentConfigs
 }
 
+func (dbc *DatabaseConfig) SetDatabase(db *sql.DB) {
+	dbc.DB = db
+}
+
 type DatabaseConfigMap map[string]*DatabaseConfig
 
 func (dbc *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
@@ -43,11 +47,16 @@ func (dbc *DatabaseConfig) DatabaseService() (*sql.DB, error) {
 		RawQuery: url.Values{}.Encode(),
 	}
 
-	db, err := sql.Open(dbc.Scheme.Value, strings.Join([]string{u.String(), "/", dbc.Database.Value, "?sslmode=disable"}, ""))
+	db, err := sql.Open(
+		dbc.Scheme.Value,
+		strings.Join(
+			[]string{u.String(), "/", dbc.Database.Value, "?sslmode=disable"}, ""),
+	)
 
 	if err != nil {
-		log.Errorf("failed to open postgres connection; err: %v", err.Error())
-		return nil, fmt.Errorf("cannot open connection to the database")
+		err = fmt.Errorf("DatabaseService: failed to open postgres connection; error: %w", err)
+		log.Error(err)
+		return nil, err
 	}
 	if dbc.MaxConnections.Value != "" {
 		db.SetMaxOpenConns(toInt(dbc.MaxConnections.Value))

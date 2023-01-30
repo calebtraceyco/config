@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-type CrawlerConfig struct {
+type Scraper struct {
 	Name                   yaml.Node `yaml:"Name"`
 	AppsJSONPath           yaml.Node `yaml:"AppsJSONPath"`
 	TimeoutSeconds         yaml.Node `yaml:"TimeoutSeconds"`
@@ -26,13 +26,17 @@ type CrawlerConfig struct {
 	componentConfigs       ComponentConfigs
 }
 
-type CrawlConfigMap map[string]*CrawlerConfig
+func (c *Scraper) setCollector(coll *colly.Collector) {
+	c.Collector = coll
+}
 
-func (c *CrawlerConfig) CrawlerComponentConfigs() ComponentConfigs {
+type CrawlConfigMap map[string]*Scraper
+
+func (c *Scraper) components() ComponentConfigs {
 	return c.componentConfigs
 }
 
-func (c *CrawlerConfig) CrawlerCollector() (*colly.Collector, error) {
+func (c *Scraper) collector() (*colly.Collector, error) {
 
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
@@ -74,7 +78,7 @@ func (c *CrawlerConfig) CrawlerCollector() (*colly.Collector, error) {
 
 func (cm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
 	*cm = CrawlConfigMap{}
-	var crawlers []CrawlerConfig
+	var crawlers []Scraper
 
 	if decodeErr := node.Decode(&crawlers); decodeErr != nil {
 		return fmt.Errorf("decode error: %v", decodeErr.Error())
@@ -85,7 +89,7 @@ func (cm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
 		crawlerCopy := crawler
 
 		if serviceErr := crawler.Name.Decode(&crawlerKey); serviceErr != nil {
-			return fmt.Errorf("decode error: %v", serviceErr.Error())
+			return fmt.Errorf("decode error: %w", serviceErr)
 		}
 		(*cm)[crawlerKey] = &crawlerCopy
 	}

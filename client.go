@@ -15,15 +15,20 @@ type ClientConfig struct {
 	InsecureSkipVerify configFlag
 }
 
-func createHTTPClient(cc ClientConfig) *http.Client {
+func httpClient(cc ClientConfig) *http.Client {
 	disableCompression := false
+	timeout := 15
 
 	if cc.DisableCompression == True {
 		disableCompression = true
 	}
 
+	if to := toInt(cc.Timeout.Value); to != 0 {
+		timeout = to
+	}
+
 	return &http.Client{
-		Timeout: time.Duration(toInt(cc.Timeout.Value)) * time.Second,
+		Timeout: time.Duration(timeout) * time.Second,
 		Transport: &http.Transport{
 			IdleConnTimeout:     time.Duration(toInt(cc.IdleConnTimeout.Value)) * time.Second,
 			MaxIdleConnsPerHost: toInt(cc.MaxIdleConsPerHost.Value),
