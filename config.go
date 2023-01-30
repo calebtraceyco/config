@@ -36,13 +36,13 @@ type ComponentConfigs struct {
 func New(configPath string) *Config {
 	log.Infoln(configPath)
 
-	config, errs := new(builder).NewConfig(configPath)
+	config, errs := new(builder).newConfig(configPath)
 	if len(errs) > 0 || config == nil {
 		for _, err := range errs {
-			log.Panicf("Config error: %v\n", err.Error())
+			log.Panicf("configuration error: %v\n", err.Error())
 		}
 		if config == nil {
-			log.Panicln("Config file not found")
+			log.Panicln("configuration file not found")
 		}
 		log.Panicln("Exiting: Failed to load the config file")
 	}
@@ -68,10 +68,15 @@ func (c *Config) Service(name string) (*ServiceConfig, error) {
 }
 
 // Crawler returns an initialized crawler configuration by name
-func (c *Config) Crawler(name string) (*CrawlerConfig, error) {
+func (c *Config) Crawler(name string) (*Scraper, error) {
 	if crawler, ok := c.Crawlers[name]; ok {
 		return crawler, nil
 	}
 	// return error if the crawler not found in config
 	return nil, fmt.Errorf("Crawler: %w", errors.New(fmt.Sprintf("%s not found", name)))
+}
+
+func appendAndLog(err error, errs []error) []error {
+	log.Error(err)
+	return append(errs, err)
 }
