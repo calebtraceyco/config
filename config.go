@@ -1,7 +1,6 @@
 package config_yaml
 
 import (
-	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -55,7 +54,7 @@ func (c *Config) Database(name string) (*DatabaseConfig, error) {
 		return database, nil
 	}
 	// return error if the database not found in config
-	return nil, fmt.Errorf("Database: %w", errors.New(fmt.Sprintf("%s not found", name)))
+	return nil, fmt.Errorf("Database: %s", fmt.Sprintf("%s not found", name))
 }
 
 // Service returns an initialized service configuration by name
@@ -64,7 +63,7 @@ func (c *Config) Service(name string) (*ServiceConfig, error) {
 		return service, nil
 	}
 	// return error if the service not found in config
-	return nil, fmt.Errorf("Service: %w", errors.New(fmt.Sprintf("%s not found", name)))
+	return nil, fmt.Errorf("Service: %s", fmt.Sprintf("%s not found", name))
 }
 
 // Crawler returns an initialized crawler configuration by name
@@ -73,7 +72,7 @@ func (c *Config) Crawler(name string) (*Scraper, error) {
 		return crawler, nil
 	}
 	// return error if the crawler not found in config
-	return nil, fmt.Errorf("Crawler: %w", errors.New(fmt.Sprintf("%s not found", name)))
+	return nil, fmt.Errorf("Crawler: %w", fmt.Sprintf("%s not found", name))
 }
 
 func appendAndLog(err error, errs []error) []error {

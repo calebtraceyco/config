@@ -67,11 +67,11 @@ func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, err error) {
 	} else {
 		var poolErr error
 		pool, poolErr = pgxpool.NewWithConfig(ctx, cfg)
-		defer pool.Close()
 		if poolErr != nil {
 			log.Errorf("DatabaseService: failed to establish connection pool: %v", poolErr)
 			return nil, poolErr
 		}
+		defer pool.Close()
 	}
 
 	if dbc.MaxConnections.Value != "" {

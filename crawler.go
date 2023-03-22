@@ -12,13 +12,13 @@ import (
 )
 
 type Scraper struct {
-	Name                   yaml.Node `yaml:"Name"`
-	AppsJSONPath           yaml.Node `yaml:"AppsJSONPath"`
-	TimeoutSeconds         yaml.Node `yaml:"TimeoutSeconds"`
-	LoadingTimeoutSeconds  yaml.Node `yaml:"LoadingTimeoutSeconds"`
-	JSON                   yaml.Node `yaml:"JSON"`
-	MaxDepth               yaml.Node `yaml:"MaxDepth"`
-	visitedLinks           yaml.Node `yaml:"VisitedLinks"`
+	Name                  yaml.Node `yaml:"Name"`
+	AppsJSONPath          yaml.Node `yaml:"AppsJSONPath"`
+	TimeoutSeconds        yaml.Node `yaml:"TimeoutSeconds"`
+	LoadingTimeoutSeconds yaml.Node `yaml:"LoadingTimeoutSeconds"`
+	JSON                  yaml.Node `yaml:"JSON"`
+	MaxDepth              yaml.Node `yaml:"MaxDepth"`
+	//visitedLinks           yaml.Node `yaml:"VisitedLinks"`
 	MaxVisitedLinks        yaml.Node `yaml:"MaxVisitedLinks"`
 	MsDelayBetweenRequests yaml.Node `yaml:"MsDelayBetweenRequests"`
 	UserAgent              yaml.Node `yaml:"UserAgent"`
@@ -26,15 +26,7 @@ type Scraper struct {
 	componentConfigs       ComponentConfigs
 }
 
-func (c *Scraper) setCollector(coll *colly.Collector) {
-	c.Collector = coll
-}
-
 type CrawlConfigMap map[string]*Scraper
-
-func (c *Scraper) components() ComponentConfigs {
-	return c.componentConfigs
-}
 
 func (c *Scraper) collector() (*colly.Collector, error) {
 

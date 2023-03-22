@@ -98,9 +98,8 @@ func initialConfig(data io.Reader) (*Config, error) {
 }
 
 func mergeServiceComponentConfigs(c *Config) error {
-	componentConfigs := c.ComponentConfigs
 	for i, service := range c.Services {
-		if mergeErr := mergeConfigs(&service.ComponentConfigOverrides, &componentConfigs, &service.mergedComponentConfigs); mergeErr != nil {
+		if mergeErr := mergeConfigs(&service.ComponentConfigOverrides, &c.ComponentConfigs, &service.mergedComponentConfigs); mergeErr != nil {
 			return fmt.Errorf("mergeServiceComponentConfigs: failed to merging component config: %v; error %w", i, mergeErr)
 		}
 	}
