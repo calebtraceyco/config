@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -74,7 +75,12 @@ func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, err error) {
 	}
 
 	if dbc.MaxConnections.Value != "" {
-		pool.Config().MaxConns = int32(toInt(dbc.MaxConnections.Value))
+		if parsed, parseErr := strconv.ParseInt(dbc.MaxConnections.Value, 10, 32); parseErr != nil {
+			log.Errorf("DatabaseService: failed to parse Max Connections value: %v", parsed)
+			return nil, parseErr
+		} else {
+			pool.Config().MaxConns = int32(parsed)
+		}
 	}
 	//if dbc.MaxIdleConnections.Value != "" {
 	//	db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
