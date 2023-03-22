@@ -23,7 +23,7 @@ type Scraper struct {
 	MsDelayBetweenRequests yaml.Node `yaml:"MsDelayBetweenRequests"`
 	UserAgent              yaml.Node `yaml:"UserAgent"`
 	Collector              *colly.Collector
-	componentConfigs       ComponentConfigs
+	//componentConfigs       ComponentConfigs
 }
 
 type CrawlConfigMap map[string]*Scraper

@@ -66,13 +66,13 @@ func (c *Config) Service(name string) (*ServiceConfig, error) {
 	return nil, fmt.Errorf("Service: %s", fmt.Sprintf("%s not found", name))
 }
 
-// Crawler returns an initialized crawler configuration by name
+// Crawler returns an initialized crawler configuration by namecomponentConfigs
 func (c *Config) Crawler(name string) (*Scraper, error) {
 	if crawler, ok := c.Crawlers[name]; ok {
 		return crawler, nil
 	}
 	// return error if the crawler not found in config
-	return nil, fmt.Errorf("Crawler: %w", fmt.Sprintf("%s not found", name))
+	return nil, fmt.Errorf("Crawler: %s", fmt.Sprintf("%s not found", name))
 }
 
 func appendAndLog(err error, errs []error) []error {
