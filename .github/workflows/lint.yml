@@ -1,9 +1,22 @@
-on: [pull_request]
-name: Test
+name: Lint
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "main" ]
+  schedule:
+    - cron: '24 11 * * 1'
+
 jobs:
   golangci:
     name: lint
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     steps:
         - uses: actions/setup-go@v4
           with:
