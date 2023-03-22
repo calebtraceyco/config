@@ -82,6 +82,7 @@ func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, err error) {
 			pool.Config().MaxConns = int32(parsed)
 		}
 	}
+	// TODO implement remaining available mapping from config if needed
 	//if dbc.MaxIdleConnections.Value != "" {
 	//	db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
 	//}
