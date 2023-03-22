@@ -42,7 +42,7 @@ func (b *builder) newConfig(configPath string) (config *Config, errs []error) {
 
 	// initialize each database connection
 	for _, database := range b.config.Databases {
-		if database.DB, dbErr = database.DatabaseService(); dbErr != nil {
+		if database.Pool, dbErr = database.DatabaseService(); dbErr != nil {
 			errs = appendAndLog(fmt.Errorf("newConfig: %w", dbErr), errs)
 		}
 	}
@@ -98,9 +98,8 @@ func initialConfig(data io.Reader) (*Config, error) {
 }
 
 func mergeServiceComponentConfigs(c *Config) error {
-	componentConfigs := c.ComponentConfigs
 	for i, service := range c.Services {
-		if mergeErr := mergeConfigs(&service.ComponentConfigOverrides, &componentConfigs, &service.mergedComponentConfigs); mergeErr != nil {
+		if mergeErr := mergeConfigs(&service.ComponentConfigOverrides, &c.ComponentConfigs, &service.mergedComponentConfigs); mergeErr != nil {
 			return fmt.Errorf("mergeServiceComponentConfigs: failed to merging component config: %v; error %w", i, mergeErr)
 		}
 	}
