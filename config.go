@@ -34,7 +34,7 @@ type ComponentConfigs struct {
 }
 
 func New(configPath string) *Config {
-	log.Infoln(configPath)
+	log.Infof("config file: %s", configPath)
 
 	config, errs := new(builder).newConfig(configPath)
 	if len(errs) > 0 || config == nil {

@@ -20,38 +20,29 @@ type builder struct {
 }
 
 func (b *builder) newConfig(configPath string) (config *Config, errs []error) {
-	file, loadErr := b.Load(configPath)
-	if loadErr != nil {
-		return nil, []error{fmt.Errorf("newConfig: %w", loadErr)}
-	}
-
-	defer func(configFile *os.File) {
-		if closeErr := configFile.Close(); closeErr != nil {
-			log.Error(fmt.Errorf("newConfig: failed to close file: %v; error: %w", file.Name(), closeErr))
+	if file, loadErrs := b.loadConfig(configPath); loadErrs != nil {
+		return nil, loadErrs
+	} else {
+		if readErr := b.Read(file); readErr != nil {
+			return nil, []error{fmt.Errorf("newConfig: failed to read file: %v; error: %w", file.Name(), readErr)}
 		}
-	}(file)
-
-	if readErr := b.Read(file); readErr != nil {
-		return nil, []error{fmt.Errorf("newConfig: failed to read file: %v; error: %w", file.Name(), readErr)}
 	}
 
-	for _, service := range b.configuration().Services {
+	for _, service := range b.config.Services {
 		service.setClient(service.mergedComponents().Client)
 	}
 
 	var collErr, dbErr error
 	// initialize the Collector for each crawler
-	for _, crawler := range b.configuration().Crawlers {
-		crawler.Collector, collErr = crawler.collector()
-		if collErr != nil {
+	for _, crawler := range b.config.Crawlers {
+		if crawler.Collector, collErr = crawler.collector(); collErr != nil {
 			errs = appendAndLog(fmt.Errorf("newConfig: failed to build crawler; error: %w", collErr), errs)
 		}
 	}
 
 	// initialize each database connection
-	for _, database := range b.configuration().Databases {
-		database.DB, dbErr = database.DatabaseService()
-		if dbErr != nil {
+	for _, database := range b.config.Databases {
+		if database.DB, dbErr = database.DatabaseService(); dbErr != nil {
 			errs = appendAndLog(fmt.Errorf("newConfig: %w", dbErr), errs)
 		}
 	}
@@ -59,20 +50,19 @@ func (b *builder) newConfig(configPath string) (config *Config, errs []error) {
 	return b.config, errs
 }
 
-func (b *builder) configuration() *Config {
-	return b.config
+func (b *builder) loadConfig(configPath string) (*os.File, []error) {
+	if file, loadErr := b.Load(configPath); loadErr != nil {
+		return nil, []error{fmt.Errorf("newConfig: %w", loadErr)}
+	} else {
+		return file, nil
+	}
 }
 
-func (b *builder) Path() string {
-	return b.configPath
-}
-
-func (b *builder) Load(path string) (*os.File, error) {
+func (b *builder) Load(path string) (file *os.File, err error) {
 	log.Tracef("Loading config: %v", path)
 	b.configPath = path
 
-	file, err := os.Open(path)
-	if err != nil {
+	if file, err = os.Open(path); err != nil {
 		return nil, fmt.Errorf("Load: failed to open config file %v; %w", path, err)
 	}
 
@@ -80,8 +70,7 @@ func (b *builder) Load(path string) (*os.File, error) {
 }
 
 func (b *builder) Read(configData io.Reader) (err error) {
-	b.config, err = initialConfig(configData)
-	if err != nil {
+	if b.config, err = initialConfig(configData); err != nil {
 		return err
 	}
 
@@ -111,8 +100,7 @@ func initialConfig(data io.Reader) (*Config, error) {
 func mergeServiceComponentConfigs(c *Config) error {
 	componentConfigs := c.ComponentConfigs
 	for i, service := range c.Services {
-		mergeErr := mergeConfigs(&service.ComponentConfigOverrides, &componentConfigs, &service.mergedComponentConfigs)
-		if mergeErr != nil {
+		if mergeErr := mergeConfigs(&service.ComponentConfigOverrides, &componentConfigs, &service.mergedComponentConfigs); mergeErr != nil {
 			return fmt.Errorf("mergeServiceComponentConfigs: failed to merging component config: %v; error %w", i, mergeErr)
 		}
 	}
@@ -124,16 +112,12 @@ func mergeConfigs(override *ComponentConfigs, defaultC *ComponentConfigs, merged
 		return errors.New("mergeConfigs: nil pointer passed for merged components")
 	}
 
-	if override != nil {
-		if err := copier.Copy(mergedC, override); err != nil {
-			return fmt.Errorf("mergeConfigs: failed to copy config overrides; error: %w", err)
-		}
+	if err := copier.Copy(mergedC, override); err != nil && override != nil {
+		return fmt.Errorf("mergeConfigs: failed to copy config overrides; error: %w", err)
 	}
 
-	if defaultC != nil {
-		if err := mergo.Merge(mergedC, defaultC); err != nil {
-			return fmt.Errorf("mergeConfigs: failed to copy config defaults; error: %w", err)
-		}
+	if err := mergo.Merge(mergedC, defaultC); err != nil && defaultC != nil {
+		return fmt.Errorf("mergeConfigs: failed to copy config defaults; error: %w", err)
 	}
 	return nil
 }
@@ -142,8 +126,7 @@ func toInt(str string) int {
 	res := 0
 	var err error
 	if str != "" {
-		res, err = strconv.Atoi(str)
-		if err != nil {
+		if res, err = strconv.Atoi(str); err != nil {
 			log.Errorf("toInt: failed to convert '%s' to int; error: %v", str, err)
 		}
 	}
