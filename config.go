@@ -4,6 +4,7 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 type configFlag int
@@ -33,7 +34,7 @@ type ComponentConfigs struct {
 }
 
 func New(configPath string) *Config {
-	log.Infof("config file: %s", configPath)
+	log.Infoln(configPath)
 
 	config, errs := new(builder).newConfig(configPath)
 	if len(errs) > 0 || config == nil {
@@ -45,6 +46,7 @@ func New(configPath string) *Config {
 		}
 		log.Panicln("Exiting: Failed to load the config file")
 	}
+	log.Infof("environment: %s", strings.ToUpper(config.Env.Value))
 	return config
 }
 
@@ -66,7 +68,7 @@ func (c *Config) Service(name string) (*ServiceConfig, error) {
 	return nil, fmt.Errorf("Service: %s", fmt.Sprintf("%s not found", name))
 }
 
-// Crawler returns an initialized crawler configuration by namecomponentConfigs
+// Crawler returns an initialized crawler configuration by name
 func (c *Config) Crawler(name string) (*Scraper, error) {
 	if crawler, ok := c.Crawlers[name]; ok {
 		return crawler, nil
