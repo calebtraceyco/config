@@ -1,10 +1,37 @@
 # config-yaml
 
+---
+See example usage [here](https://github.com/CalebTracey/myb-api/tree/main/cmd/svr)
 ## Install
 
-    go get github.com/calebtracey/config-yaml
+    go get -u github.com/calebtracey/config-yaml
 
-See example usage [here](https://github.com/CalebTracey/go-scraper/tree/main/cmd/svr)
 ### Example yaml file config:
-<img src=./images/config-yaml.jpg  alt="config-image"/>
+
+``` yaml
+Env: "Dev"
+Port: 6080
+AppName: "example-app"
+ComponentConfigs:
+  Client:
+    Timeout: 15
+    IdleConnTimeout: 15
+    MaxIdleConsPerHost: 50
+    MaxConsPerHost: 0
+    DisableCompression: 2
+    InsecureSkipVerify: 1
+Services:
+  - Name: "TestAPI"
+    URL: "https://api.test.net/v5"
+    ApiKeyEnvironmentVariable: "API_KEY"
+    PublicKeyEnvironmentVariable: "PUBLIC_KEY"
+Databases:
+  - Name: "PostgresDB"
+    Database: "postgres"
+    Server: "db.example.supabase.co:5432"
+    Username: "postgres"
+    Scheme: "postgres"
+    AuthRequired: "true"
+    AuthEnvironmentVariable: "DB_PASSWORD_DEV"
+  ```
 
