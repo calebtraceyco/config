@@ -1,28 +1,35 @@
 package config_yaml
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
+	"time"
 )
 
 type DatabaseConfig struct {
-	Name                    yaml.Node `yaml:"Name"`
-	Database                yaml.Node `yaml:"Database"`
-	Server                  yaml.Node `yaml:"Server"`
-	Username                yaml.Node `yaml:"Username"`
-	Password                yaml.Node `yaml:"Password"`
-	AuthRequired            yaml.Node `yaml:"AuthRequired"`
-	AuthEnvironmentVariable yaml.Node `yaml:"AuthEnvironmentVariable"`
-	RawConnectionString     yaml.Node `yaml:"RawConnectionString"`
-	Scheme                  yaml.Node `yaml:"Scheme"`
-	MaxConnections          yaml.Node `yaml:"MaxConnections"`
-	MaxIdleConnections      yaml.Node `yaml:"MaxIdleConnections"`
-	DB                      *sql.DB   `yaml:"-" json:"-"`
+	Name                    yaml.Node     `yaml:"Name"`
+	Database                yaml.Node     `yaml:"Database"`
+	Host                    yaml.Node     `yaml:"Host"`
+	Port                    yaml.Node     `yaml:"Port"`
+	Server                  yaml.Node     `yaml:"Server"`
+	Username                yaml.Node     `yaml:"Username"`
+	Password                yaml.Node     `yaml:"Password"`
+	AuthRequired            yaml.Node     `yaml:"AuthRequired"`
+	AuthEnvironmentVariable yaml.Node     `yaml:"AuthEnvironmentVariable"`
+	RawConnectionString     yaml.Node     `yaml:"RawConnectionString"`
+	Scheme                  yaml.Node     `yaml:"Scheme"`
+	MaxConnections          yaml.Node     `yaml:"MaxConnections"`
+	MaxIdleConnections      yaml.Node     `yaml:"MaxIdleConnections"`
+	DB                      *sql.DB       `yaml:"-" json:"-"`
+	Pool                    *pgxpool.Pool `yaml:"-"`
 	componentConfigs        ComponentConfigs
 }
 
@@ -32,7 +39,10 @@ func (dbc *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
 	return dbc.componentConfigs
 }
 
-func (dbc *DatabaseConfig) DatabaseService() (db *sql.DB, err error) {
+func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	dbc.mapAuthentication()
 	dbc.validate()
 
@@ -50,23 +60,32 @@ func (dbc *DatabaseConfig) DatabaseService() (db *sql.DB, err error) {
 		connectionStr = dbc.RawConnectionString.Value
 	}
 
-	if db, err = sql.Open(dbc.Scheme.Value, connectionStr); err != nil {
-		log.Errorf("DatabaseService: failed postgres connection: %s; \nerror: %v", connectionStr, err)
+	if cfg, cfgErr := pgxpool.ParseConfig(connectionStr); cfgErr != nil {
+		log.Errorf("DatabaseService: postgres connection failed: %s; \nerror: %v", connectionStr, err)
 		return nil, err
+	} else {
+		var poolErr error
+		pool, poolErr = pgxpool.NewWithConfig(ctx, cfg)
+		defer pool.Close()
+		if poolErr != nil {
+			log.Errorf("DatabaseService: failed to establish connection pool: %v", poolErr)
+			return nil, poolErr
+		}
 	}
 
 	if dbc.MaxConnections.Value != "" {
-		db.SetMaxOpenConns(toInt(dbc.MaxConnections.Value))
+		pool.Config().MaxConns = int32(toInt(dbc.MaxConnections.Value))
 	}
-	if dbc.MaxIdleConnections.Value != "" {
-		db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
-	}
+	//if dbc.MaxIdleConnections.Value != "" {
+	//	db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
+	//}
 
-	if pingErr := db.Ping(); pingErr != nil {
+	if pingErr := pool.Ping(ctx); pingErr != nil {
 		return nil, fmt.Errorf("unable to ping database; err: %v", pingErr.Error())
 	}
 
-	return db, nil
+	return pool, nil
+
 }
 
 func (dbc *DatabaseConfig) mapAuthentication() {
@@ -81,7 +100,7 @@ func (dbc *DatabaseConfig) mapAuthentication() {
 func (dbc *DatabaseConfig) validate() {
 	if dbc.AuthEnvironmentVariable.Value == "" || dbc.Server.Value == "" || dbc.Username.Value == "" || dbc.Database.Value == "" {
 		// TODO possibly return this as an error
-		log.Errorf("Missing DB config fields for %v", dbc)
+		log.Errorf("hey dummy! you're missing DB config fields...")
 	}
 }
 

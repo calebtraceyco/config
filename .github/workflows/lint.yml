@@ -1,0 +1,11 @@
+on: [pull_request]
+name: Lint
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: golangci/golangci-lint-action@master
+        with:
+          version: v1.50.1
+          github-token: ${{ secrets.github_token }}
