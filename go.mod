@@ -1,4 +1,4 @@
-module github.com/calebtraceyco/config-yaml
+module github.com/calebtraceyco/config
 
 go 1.20
 
