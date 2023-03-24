@@ -19,7 +19,8 @@ type builder struct {
 	configPath string
 }
 
-func (b *builder) newConfig(configPath string) (config *Config, errs []error) {
+func (b *builder) newConfig(configPath string) (*Config, []error) {
+	var errs []error
 	if file, loadErrs := b.loadConfig(configPath); loadErrs != nil {
 		return nil, loadErrs
 	} else {
@@ -32,18 +33,17 @@ func (b *builder) newConfig(configPath string) (config *Config, errs []error) {
 		service.setClient(service.mergedComponents().Client)
 	}
 
-	var collErr, dbErr error
+	var collErr error
+	var dbErrs []error
 	// initialize the Collector for each crawler
 	for _, crawler := range b.config.Crawlers {
 		if crawler.Collector, collErr = crawler.collector(); collErr != nil {
 			errs = appendAndLog(fmt.Errorf("newConfig: failed to build crawler; error: %w", collErr), errs)
 		}
 	}
-
-	// initialize each database connection
 	for _, database := range b.config.Databases {
-		if database.Pool, dbErr = database.DatabaseService(); dbErr != nil {
-			errs = appendAndLog(fmt.Errorf("newConfig: %w", dbErr), errs)
+		if database.Pool, dbErrs = database.DatabaseService(); dbErrs != nil {
+			errs = appendAndLog(fmt.Errorf("newConfig: %v", dbErrs), errs)
 		}
 	}
 
@@ -61,11 +61,9 @@ func (b *builder) loadConfig(configPath string) (*os.File, []error) {
 func (b *builder) Load(path string) (file *os.File, err error) {
 	log.Tracef("Loading config: %v", path)
 	b.configPath = path
-
 	if file, err = os.Open(path); err != nil {
 		return nil, fmt.Errorf("Load: failed to open config file %v; %w", path, err)
 	}
-
 	return file, err
 }
 

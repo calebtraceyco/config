@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -11,25 +12,24 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
-	"strconv"
 	"time"
 )
 
 type DatabaseConfig struct {
-	Name                    yaml.Node     `yaml:"Name"`
-	Database                yaml.Node     `yaml:"Database"`
-	Host                    yaml.Node     `yaml:"Host"`
-	Port                    yaml.Node     `yaml:"Port"`
-	Server                  yaml.Node     `yaml:"Server"`
-	Username                yaml.Node     `yaml:"Username"`
-	Password                yaml.Node     `yaml:"Password"`
-	AuthRequired            yaml.Node     `yaml:"AuthRequired"`
-	AuthEnvironmentVariable yaml.Node     `yaml:"AuthEnvironmentVariable"`
-	RawConnectionString     yaml.Node     `yaml:"RawConnectionString"`
-	Scheme                  yaml.Node     `yaml:"Scheme"`
-	MaxConnections          yaml.Node     `yaml:"MaxConnections"`
-	MaxIdleConnections      yaml.Node     `yaml:"MaxIdleConnections"`
-	DB                      *sql.DB       `yaml:"-" json:"-"`
+	Name                    string        `yaml:"Name"`
+	Database                string        `yaml:"Database"`
+	Host                    string        `yaml:"Host"`
+	Port                    int           `yaml:"Port"`
+	Server                  string        `yaml:"Server"`
+	Username                string        `yaml:"Username"`
+	Password                string        `yaml:"Password"`
+	AuthRequired            bool          `yaml:"AuthRequired"`
+	AuthEnvironmentVariable string        `yaml:"AuthEnvironmentVariable"`
+	RawConnectionString     string        `yaml:"RawConnectionString"`
+	Scheme                  string        `yaml:"Scheme"`
+	MaxConnections          int           `yaml:"MaxConnections"`
+	MaxIdleConnections      int           `yaml:"MaxIdleConnections"`
+	DB                      *sql.DB       `yaml:"-"`
 	Pool                    *pgxpool.Pool `yaml:"-"`
 	componentConfigs        ComponentConfigs
 }
@@ -40,93 +40,91 @@ func (dbc *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
 	return dbc.componentConfigs
 }
 
-func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, err error) {
+func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, errs []error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
 	dbc.mapAuthentication()
-	dbc.validate()
+	if errs = dbc.validate(); errs != nil {
+		return pool, errs
+	}
 
 	connectionStr := ""
 
-	switch dbc.Scheme.Value {
+	switch dbc.Scheme {
 	case Postgres:
 		u := &url.URL{
-			Scheme: dbc.Scheme.Value,
-			User:   url.UserPassword(dbc.Username.Value, dbc.Password.Value),
-			Host:   dbc.Server.Value,
+			Scheme: dbc.Scheme,
+			User:   url.UserPassword(dbc.Username, dbc.Password),
+			Host:   dbc.Server,
 		}
 		connectionStr = u.String()
 	default:
-		connectionStr = dbc.RawConnectionString.Value
+		connectionStr = dbc.RawConnectionString
 	}
-
 	if cfg, cfgErr := pgxpool.ParseConfig(connectionStr); cfgErr != nil {
-		log.Errorf("DatabaseService: postgres connection failed: %s; \nerror: %v", connectionStr, err)
-		return nil, err
+		log.Errorf("DatabaseService: postgres connection failed: %s; \nerror: %v", connectionStr, cfgErr)
+		return nil, []error{cfgErr}
 	} else {
 		var poolErr error
 		pool, poolErr = pgxpool.NewWithConfig(ctx, cfg)
 		if poolErr != nil {
 			log.Errorf("DatabaseService: failed to establish connection pool: %v", poolErr)
-			return nil, poolErr
+			return nil, []error{poolErr}
 		}
-	}
-
-	if dbc.MaxConnections.Value != "" {
-		if parsed, parseErr := strconv.ParseInt(dbc.MaxConnections.Value, 10, 32); parseErr != nil {
-			log.Errorf("DatabaseService: failed to parse Max Connections value: %v", parsed)
-			return nil, parseErr
-		} else {
-			pool.Config().MaxConns = int32(parsed)
+		if pingErr := pool.Ping(ctx); pingErr != nil {
+			return nil, []error{fmt.Errorf("DatabaseService: unable to ping database; err: %v", pingErr)}
 		}
-	}
-	// TODO implement remaining available mapping from config if needed
-	//if dbc.MaxIdleConnections.Value != "" {
-	//	db.SetMaxIdleConns(toInt(dbc.MaxIdleConnections.Value))
-	//}
-
-	if pingErr := pool.Ping(ctx); pingErr != nil {
-		return nil, fmt.Errorf("unable to ping database; err: %v", pingErr.Error())
 	}
 
 	return pool, nil
-
 }
 
 func (dbc *DatabaseConfig) mapAuthentication() {
-	if dbc.Password.Value == "" && dbc.AuthRequired.Value == "true" && dbc.AuthEnvironmentVariable.Value != "" {
-		dbc.Password = yaml.Node{Value: os.Getenv(dbc.AuthEnvironmentVariable.Value)}
-		if dbc.RawConnectionString.Value != "" {
-			dbc.RawConnectionString.Value = fmt.Sprintf(dbc.RawConnectionString.Value, dbc.Password.Value)
+	if dbc.Password == "" && dbc.AuthRequired && dbc.AuthEnvironmentVariable != "" {
+		dbc.Password = os.Getenv(dbc.AuthEnvironmentVariable)
+		if dbc.RawConnectionString == "" {
+			dbc.RawConnectionString = fmt.Sprintf(dbc.RawConnectionString, dbc.Password, dbc.Database)
 		}
 	}
 }
 
-func (dbc *DatabaseConfig) validate() {
-	if dbc.AuthEnvironmentVariable.Value == "" || dbc.Server.Value == "" || dbc.Username.Value == "" || dbc.Database.Value == "" {
-		// TODO possibly return this as an error
-		log.Errorf("hey dummy! you're missing DB config fields...")
+func (dbc *DatabaseConfig) validate() (errs []error) {
+	switch {
+	case dbc.AuthEnvironmentVariable == "":
+		errs = append(errs, validationError("AuthEnvironmentVariable", "DatabaseConfig"))
+	case dbc.Server == "":
+		errs = append(errs, validationError("Server", "DatabaseConfig"))
+	case dbc.Username == "":
+		errs = append(errs, validationError("Username", "DatabaseConfig"))
+	case dbc.Database == "":
+		errs = append(errs, validationError("Database", "DatabaseConfig"))
 	}
+
+	return errs
 }
 
-func (dm *DatabaseConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*dm = DatabaseConfigMap{}
-	var databases []DatabaseConfig
+func validationError(field, component string) error {
+	return errors.New(fmt.Sprintf("component: %s - '%s' is a required field", component, field))
+}
 
-	if decodeErr := node.Decode(&databases); decodeErr != nil {
-		return fmt.Errorf("decode error: %v", decodeErr.Error())
+func (m *DatabaseConfigMap) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.SequenceNode {
+		return fmt.Errorf("UnmarshalYAML: expected a sequence, got %v", value.Kind)
 	}
 
-	for _, db := range databases {
-		var databaseKey string
-		dbCopy := db
-
-		if databaseErr := db.Name.Decode(&databaseKey); databaseErr != nil {
-			return fmt.Errorf("decode error: %v", databaseErr.Error())
+	configs := make(DatabaseConfigMap, len(*m))
+	for _, item := range value.Content {
+		config := new(DatabaseConfig)
+		if err := item.Decode(&config); err != nil {
+			log.Errorf("UnmarshalYAML - decode error: %v", err)
+			return err
 		}
-		(*dm)[databaseKey] = &dbCopy
+
+		configs[config.Name] = config
 	}
+
+	*m = configs
 	return nil
 }
 

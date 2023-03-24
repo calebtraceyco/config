@@ -33,11 +33,10 @@ type ComponentConfigs struct {
 	Client ClientConfig
 }
 
-func New(configPath string) *Config {
+func New(configPath string) (config *Config) {
 	log.Infoln(configPath)
-
-	config, errs := new(builder).newConfig(configPath)
-	if len(errs) > 0 || config == nil {
+	var errs []error
+	if config, errs = new(builder).newConfig(configPath); len(errs) > 0 || config == nil {
 		for _, err := range errs {
 			log.Panicf("configuration error: %v\n", err.Error())
 		}
