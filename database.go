@@ -65,10 +65,11 @@ func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, errs []error) 
 	if cfg, cfgErr := pgxpool.ParseConfig(connectionStr); cfgErr != nil {
 		log.Errorf("DatabaseService: postgres connection failed: %s; \nerror: %v", connectionStr, cfgErr)
 		return nil, []error{cfgErr}
+
 	} else {
+
 		var poolErr error
-		pool, poolErr = pgxpool.NewWithConfig(ctx, cfg)
-		if poolErr != nil {
+		if pool, poolErr = pgxpool.NewWithConfig(ctx, cfg); poolErr != nil {
 			log.Errorf("DatabaseService: failed to establish connection pool: %v", poolErr)
 			return nil, []error{poolErr}
 		}
@@ -76,7 +77,7 @@ func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, errs []error) 
 			return nil, []error{fmt.Errorf("DatabaseService: unable to ping database; err: %v", pingErr)}
 		}
 	}
-
+	log.Tracef("Database connection successful: '%s'\n", dbc.Database)
 	return pool, nil
 }
 

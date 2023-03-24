@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 	"strings"
 )
 
@@ -16,9 +15,9 @@ const (
 )
 
 type Config struct {
-	AppName yaml.Node `yaml:"AppName"`
-	Env     yaml.Node `yaml:"Env"`
-	Port    yaml.Node `yaml:"Port"`
+	AppName string `yaml:"AppName"`
+	Env     string `yaml:"Env"`
+	Port    string `yaml:"Port"`
 
 	ComponentConfigs ComponentConfigs  `yaml:"ComponentConfigs"`
 	Databases        DatabaseConfigMap `yaml:"Databases"`
@@ -43,9 +42,9 @@ func New(configPath string) (config *Config) {
 		if config == nil {
 			log.Panicln("configuration file not found")
 		}
-		log.Panicln("Exiting: Failed to load the config file")
+		log.Panicln("Exiting: failed to load the config file")
 	}
-	log.Infof("environment: %s", strings.ToUpper(config.Env.Value))
+	log.Infof("env: %s", strings.ToUpper(config.Env))
 	return config
 }
 
