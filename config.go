@@ -33,7 +33,7 @@ type ComponentConfigs struct {
 }
 
 func New(configPath string) (config *Config) {
-	log.Infoln(configPath)
+	log.Tracef("config: %s\n", configPath)
 	var errs []error
 	if config, errs = new(builder).newConfig(configPath); len(errs) > 0 || config == nil {
 		for _, err := range errs {
@@ -44,7 +44,7 @@ func New(configPath string) (config *Config) {
 		}
 		log.Panicln("Exiting: failed to load the config file")
 	}
-	log.Infof("env: %s", strings.ToUpper(config.Env))
+	log.Tracef("env: %s\n", strings.ToUpper(config.Env))
 	return config
 }
 

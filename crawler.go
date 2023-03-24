@@ -11,18 +11,19 @@ import (
 	"time"
 )
 
+// Scraper TODO change yaml.Node fields to correct types
 type Scraper struct {
-	Name                  yaml.Node `yaml:"Name"`
-	AppsJSONPath          yaml.Node `yaml:"AppsJSONPath"`
-	TimeoutSeconds        yaml.Node `yaml:"TimeoutSeconds"`
-	LoadingTimeoutSeconds yaml.Node `yaml:"LoadingTimeoutSeconds"`
-	JSON                  yaml.Node `yaml:"JSON"`
-	MaxDepth              yaml.Node `yaml:"MaxDepth"`
-	//visitedLinks           yaml.Node `yaml:"VisitedLinks"`
-	MaxVisitedLinks        yaml.Node `yaml:"MaxVisitedLinks"`
-	MsDelayBetweenRequests yaml.Node `yaml:"MsDelayBetweenRequests"`
-	UserAgent              yaml.Node `yaml:"UserAgent"`
-	Collector              *colly.Collector
+	Name                  string `yaml:"Name"`
+	AppsJSONPath          string `yaml:"AppsJSONPath"`
+	TimeoutSeconds        string `yaml:"TimeoutSeconds"`
+	LoadingTimeoutSeconds string `yaml:"LoadingTimeoutSeconds"`
+	JSON                  string `yaml:"JSON"`
+	MaxDepth              string `yaml:"MaxDepth"`
+	//visitedLinks           string `yaml:"VisitedLinks"`
+	MaxVisitedLinks        string           `yaml:"MaxVisitedLinks"`
+	MsDelayBetweenRequests string           `yaml:"MsDelayBetweenRequests"`
+	UserAgent              string           `yaml:"UserAgent"`
+	Collector              *colly.Collector `yaml:"-"`
 	//componentConfigs       ComponentConfigs
 }
 
@@ -32,13 +33,13 @@ func (c *Scraper) collector() (*colly.Collector, error) {
 
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   time.Second * time.Duration(toInt(c.TimeoutSeconds.Value)),
+			Timeout:   time.Second * time.Duration(toInt(c.TimeoutSeconds)),
 			KeepAlive: 180 * time.Second,
 		}).DialContext,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   2 * time.Second,
-		ExpectContinueTimeout: time.Duration(toInt(c.TimeoutSeconds.Value)) * time.Second,
+		ExpectContinueTimeout: time.Duration(toInt(c.TimeoutSeconds)) * time.Second,
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
 
@@ -52,7 +53,7 @@ func (c *Scraper) collector() (*colly.Collector, error) {
 		return nil, err
 	}
 
-	coll.UserAgent = c.UserAgent.Value
+	coll.UserAgent = c.UserAgent
 	coll.WithTransport(transport)
 
 	coll.OnRequest(func(r *colly.Request) {
@@ -68,22 +69,22 @@ func (c *Scraper) collector() (*colly.Collector, error) {
 	return coll, nil
 }
 
-func (cm *CrawlConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*cm = CrawlConfigMap{}
-	var crawlers []Scraper
-
-	if decodeErr := node.Decode(&crawlers); decodeErr != nil {
-		return fmt.Errorf("decode error: %v", decodeErr.Error())
+func (m *CrawlConfigMap) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.SequenceNode {
+		return fmt.Errorf("UnmarshalYAML: expected a sequence, got %v", value.Kind)
 	}
 
-	for _, crawler := range crawlers {
-		var crawlerKey string
-		crawlerCopy := crawler
-
-		if serviceErr := crawler.Name.Decode(&crawlerKey); serviceErr != nil {
-			return fmt.Errorf("decode error: %w", serviceErr)
+	configs := make(CrawlConfigMap, len(*m))
+	for _, item := range value.Content {
+		config := new(Scraper)
+		if err := item.Decode(&config); err != nil {
+			log.Errorf("UnmarshalYAML - decode error: %v", err)
+			return err
 		}
-		(*cm)[crawlerKey] = &crawlerCopy
+
+		configs[config.Name] = config
 	}
+
+	*m = configs
 	return nil
 }
