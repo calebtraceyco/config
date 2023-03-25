@@ -1,14 +1,24 @@
 name: Go API Workflow
 on:
-  push:
-    branches:
-      - MYB-*
-#      - main
+#  push:
+#    branches:
+#      - MYB-*
   pull_request:
-    types: [ opened ]
     branches:
       - MYB-*
-#      - main
+#jobs:
+##  run-pipeline:
+##    runs-on: ubuntu-latest
+#  test:
+#    strategy:
+#      matrix:
+#        go-version: [ 1.20.2 ]
+#        os: [ ubuntu-latest ]
+#    name: Go Test (Go ${{ matrix.go-version }} on ${{ matrix.os }})
+#    runs-on: ${{ matrix.os }}
+#    steps:
+#      - run: ./.github/workflows/go-test.yml
+
 jobs:
   test:
     strategy:
@@ -18,14 +28,23 @@ jobs:
     name: Go Test (Go ${{ matrix.go-version }} on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Build
-        run: go build -v ./...
-      - name: Test
-        run: go test -v ./...
+      - run: ./.github/workflows/go-test.yml
+#  test:
+#    strategy:
+#      matrix:
+#        go-version: [ 1.20.2 ]
+#        os: [ ubuntu-latest ]
+#    name: Go Test (Go ${{ matrix.go-version }} on ${{ matrix.os }})
+#    runs-on: ${{ matrix.os }}
+#    steps:
+#      - uses: actions/checkout@v3
+#      - uses: actions/setup-go@v4
+#        with:
+#          go-version: ${{ matrix.go-version }}
+#      - name: Build
+#        run: go build -v ./...
+#      - name: Test
+#        run: go test -v ./...
   lint:
     name: Go Lint
     runs-on: ubuntu-latest
