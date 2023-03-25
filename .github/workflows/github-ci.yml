@@ -1,8 +1,12 @@
 name: CI Pipeline
 on:
-  pull_request:
+  push:
     branches:
       - FEAT-*
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   ci-workflow:
     runs-on: ubuntu-latest
