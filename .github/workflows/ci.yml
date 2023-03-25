@@ -5,6 +5,7 @@ on:
       - main
   pull_request:
     branches:
+      - MYB-*
       - main
 jobs:
   test:
