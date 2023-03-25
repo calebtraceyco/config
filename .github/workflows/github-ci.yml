@@ -11,4 +11,4 @@ jobs:
   ci-workflow:
     runs-on: ubuntu-latest
     steps:
-      - run: calebtraceyco/devops/jobs/go-package.yml
+      - run: calebtraceyco/devops/jobs/go-package.yml@main
