@@ -1,8 +1,8 @@
 on:
-  push:
-    branches:
-      - MYB-*
-      - main
+#  push:
+#    branches:
+#      - MYB-*
+#      - main
   pull_request_target:
     branches:
       - MYB-*
