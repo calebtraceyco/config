@@ -6,4 +6,4 @@ on:
 jobs:
   ci-workflow:
     steps:
-      - run: calebtraceyco/jobs/go-package.yml
+      - run: calebtraceyco/devops/jobs/go-package.yml
