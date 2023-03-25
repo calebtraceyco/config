@@ -1,4 +1,5 @@
 name: CI Pipeline
+
 on:
   push:
     branches: [ FEAT-*, $default-branch ]
