@@ -6,4 +6,4 @@ on:
     branches: [ $default-branch ]
 jobs:
   ci-workflow:
-    uses: ./devops/.github/workflows/go-package.yml@main
+    uses: calebtraceyco/devops/.github/workflows/go-package.yml@main
