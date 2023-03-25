@@ -39,7 +39,7 @@ jobs:
       - name: Go Lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: 1.52
+          version: v1.52
   analyze:
     name: Analyze Code
     runs-on: ubuntu-latest
