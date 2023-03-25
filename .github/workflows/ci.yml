@@ -5,10 +5,10 @@ on:
 #      - MYB-*
 #      - main
   pull_request:
+    types: [ opened ]
     branches:
       - MYB-*
       - main
-    types: [ opened ]
 jobs:
   test:
     strategy:
