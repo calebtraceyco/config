@@ -1,9 +1,8 @@
 name: CI Pipeline
 on:
   pull_request:
-    types: [ opened ]
     branches:
-      - main
+      - FEAT-*
 jobs:
   ci-workflow:
     runs-on: ubuntu-latest
