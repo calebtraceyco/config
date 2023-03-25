@@ -1,14 +1,14 @@
 name: Go API Workflow
 on:
-#  push:
-#    branches:
-#      - MYB-*
+  push:
+    branches:
+      - MYB-*
 #      - main
   pull_request:
     types: [ opened ]
     branches:
       - MYB-*
-      - main
+#      - main
 jobs:
   test:
     strategy:
