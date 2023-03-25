@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"crypto/md5"
-	"errors"
 	"fmt"
 	"github.com/imdario/mergo"
 	"github.com/jinzhu/copier"
@@ -106,7 +105,7 @@ func mergeServiceComponentConfigs(c *Config) error {
 
 func mergeConfigs(override *ComponentConfigs, defaultC *ComponentConfigs, mergedC *ComponentConfigs) error {
 	if mergedC == nil {
-		return errors.New("mergeConfigs: nil pointer passed for merged components")
+		return fmt.Errorf("mergeConfigs: nil pointer passed for merged components")
 	}
 
 	if err := copier.Copy(mergedC, override); err != nil && override != nil {
