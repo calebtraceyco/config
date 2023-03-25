@@ -1,14 +1,10 @@
 name: CI Pipeline
 on:
   push:
-    branches:
-      - FEAT-*
-      - main
+    branches: [ FEAT-*, $default-branch ]
   pull_request:
-    branches:
-      - main
+    branches: [ $default-branch ]
 jobs:
   ci-workflow:
     runs-on: ubuntu-latest
-    steps:
-      - run: calebtraceyco.github/devops/jobs/go-package.yml
+    uses: calebtraceyco/.github/devops/jobs/go-package.yml@main
