@@ -107,11 +107,9 @@ func mergeConfigs(override *ComponentConfigs, defaultC *ComponentConfigs, merged
 	if mergedC == nil {
 		return fmt.Errorf("mergeConfigs: nil pointer passed for merged components")
 	}
-
 	if err := copier.Copy(mergedC, override); err != nil && override != nil {
 		return fmt.Errorf("mergeConfigs: failed to copy config overrides; error: %w", err)
 	}
-
 	if err := mergo.Merge(mergedC, defaultC); err != nil && defaultC != nil {
 		return fmt.Errorf("mergeConfigs: failed to copy config defaults; error: %w", err)
 	}
