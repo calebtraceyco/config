@@ -7,4 +7,4 @@ on:
 jobs:
   ci-workflow:
     runs-on: ubuntu-latest
-    uses: calebtraceyco/.github/workflows/go-package.yml@main
+    uses: calebtraceyco/devops/.github/workflows/go-package.yml@main
