@@ -1,6 +1,4 @@
 name: go-test
-on:
-  push:
 jobs:
   test:
     strategy:
