@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -106,7 +105,7 @@ func (dbc *DatabaseConfig) validate() (errs []error) {
 }
 
 func validationError(field, component string) error {
-	return errors.New(fmt.Sprintf("component: %s - '%s' is a required field", component, field))
+	return fmt.Errorf("component: %s - '%s' is a required field", component, field)
 }
 
 func (m *DatabaseConfigMap) UnmarshalYAML(value *yaml.Node) error {
