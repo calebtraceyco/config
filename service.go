@@ -1,16 +1,17 @@
-package config_yaml
+package config
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"net/http"
 )
 
 type ServiceConfig struct {
-	Name                         yaml.Node `yaml:"Name"`
-	URL                          yaml.Node `yaml:"URL"`
-	ApiKeyEnvironmentVariable    yaml.Node `yaml:"ApiKeyEnvironmentVariable"`
-	PublicKeyEnvironmentVariable yaml.Node `yaml:"PublicKeyEnvironmentVariable"`
+	Name                         string `yaml:"Name"`
+	URL                          string `yaml:"URL"`
+	ApiKeyEnvironmentVariable    string `yaml:"ApiKeyEnvironmentVariable"`
+	PublicKeyEnvironmentVariable string `yaml:"PublicKeyEnvironmentVariable"`
 	ComponentConfigOverrides     ComponentConfigs
 	Endpoints                    EndpointMap
 
@@ -36,21 +37,22 @@ func (s *ServiceConfig) mergedComponents() ComponentConfigs {
 	return s.mergedComponentConfigs
 }
 
-func (sm *ServiceConfigMap) UnmarshalYAML(node *yaml.Node) error {
-	*sm = ServiceConfigMap{}
-	var services []ServiceConfig
-
-	if decodeErr := node.Decode(&services); decodeErr != nil {
-		return fmt.Errorf("decode error: %v", decodeErr.Error())
+func (m *ServiceConfigMap) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind != yaml.SequenceNode {
+		return fmt.Errorf("UnmarshalYAML: expected a sequence, got %v", value.Kind)
 	}
 
-	for _, service := range services {
-		var serviceKey string
-		serviceCopy := service
-		if serviceErr := service.Name.Decode(&serviceKey); serviceErr != nil {
-			return fmt.Errorf("UnmarshalYAML: decode error: %w", serviceErr)
+	configs := make(ServiceConfigMap, len(*m))
+	for _, item := range value.Content {
+		config := new(ServiceConfig)
+		if err := item.Decode(&config); err != nil {
+			log.Errorf("UnmarshalYAML - decode error: %v", err)
+			return err
 		}
-		(*sm)[serviceKey] = &serviceCopy
+
+		configs[config.Name] = config
 	}
+
+	*m = configs
 	return nil
 }

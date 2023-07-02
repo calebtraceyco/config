@@ -1,10 +1,10 @@
-module github.com/calebtracey/config-yaml
+module github.com/calebtraceyco/config
 
 go 1.20
 
 require (
 	github.com/gocolly/colly v1.2.0
-	github.com/imdario/mergo v0.3.14
+	github.com/imdario/mergo v0.3.15
 	github.com/jackc/pgx/v5 v5.3.1
 	github.com/jinzhu/copier v0.3.5
 	github.com/lib/pq v1.10.7

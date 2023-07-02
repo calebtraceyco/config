@@ -1,9 +1,8 @@
-package config_yaml
+package config
 
 import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
 	"strings"
 )
 
@@ -16,9 +15,9 @@ const (
 )
 
 type Config struct {
-	AppName yaml.Node `yaml:"AppName"`
-	Env     yaml.Node `yaml:"Env"`
-	Port    yaml.Node `yaml:"Port"`
+	AppName string `yaml:"AppName"`
+	Env     string `yaml:"Env"`
+	Port    string `yaml:"Port"`
 
 	ComponentConfigs ComponentConfigs  `yaml:"ComponentConfigs"`
 	Databases        DatabaseConfigMap `yaml:"Databases"`
@@ -33,20 +32,19 @@ type ComponentConfigs struct {
 	Client ClientConfig
 }
 
-func New(configPath string) *Config {
-	log.Infoln(configPath)
-
-	config, errs := new(builder).newConfig(configPath)
-	if len(errs) > 0 || config == nil {
+func New(configPath string) (config *Config) {
+	log.Tracef("config: %s\n", configPath)
+	var errs []error
+	if config, errs = new(builder).newConfig(configPath); len(errs) > 0 || config == nil {
 		for _, err := range errs {
 			log.Panicf("configuration error: %v\n", err.Error())
 		}
 		if config == nil {
 			log.Panicln("configuration file not found")
 		}
-		log.Panicln("Exiting: Failed to load the config file")
+		log.Panicln("Exiting: failed to load the config file")
 	}
-	log.Infof("environment: %s", strings.ToUpper(config.Env.Value))
+	log.Tracef("env: %s\n", strings.ToUpper(config.Env))
 	return config
 }
 
