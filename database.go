@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -16,31 +15,32 @@ import (
 )
 
 type DatabaseConfig struct {
-	Name                    string        `yaml:"Name"`
-	Database                string        `yaml:"Database"`
-	Host                    string        `yaml:"Host"`
-	Port                    int           `yaml:"Port"`
-	Server                  string        `yaml:"Server"`
-	Username                string        `yaml:"Username"`
-	Password                string        `yaml:"Password"`
-	AuthRequired            bool          `yaml:"AuthRequired"`
-	AuthEnvironmentVariable string        `yaml:"AuthEnvironmentVariable"`
-	RawConnectionString     string        `yaml:"RawConnectionString"`
-	Scheme                  string        `yaml:"Scheme"`
-	MaxConnections          int           `yaml:"MaxConnections"`
-	MaxIdleConnections      int           `yaml:"MaxIdleConnections"`
-	DB                      *sql.DB       `yaml:"-"`
-	Pool                    *pgxpool.Pool `yaml:"-"`
-	componentConfigs        ComponentConfigs
+	Name                    string           `yaml:"Name" json:"Name,omitempty"`
+	Database                string           `yaml:"Database" json:"Database,omitempty"`
+	Host                    string           `yaml:"Host" json:"Host,omitempty"`
+	Port                    int              `yaml:"Port" json:"Port,omitempty"`
+	Server                  string           `yaml:"Server" json:"Server,omitempty"`
+	Username                string           `yaml:"Username" json:"Username,omitempty"`
+	Password                string           `yaml:"Password" json:"Password,omitempty"`
+	AuthRequired            bool             `yaml:"AuthRequired" json:"AuthRequired,omitempty"`
+	AuthEnvironmentVariable string           `yaml:"AuthEnvironmentVariable" json:"AuthEnvironmentVariable,omitempty"`
+	RawConnectionString     string           `yaml:"RawConnectionString" json:"RawConnectionString,omitempty"`
+	Scheme                  string           `yaml:"Scheme" json:"Scheme,omitempty"`
+	MaxConnections          int              `yaml:"MaxConnections" json:"MaxConnections,omitempty"`
+	MaxIdleConnections      int              `yaml:"MaxIdleConnections" json:"MaxIdleConnections,omitempty"`
+	DB                      *sql.DB          `yaml:"-" json:"DB,omitempty"`
+	Pool                    *pgxpool.Pool    `yaml:"-" json:"Pool,omitempty"`
+	ComponentConfigs        ComponentConfigs `json:"ComponentConfigs"`
 }
 
 type DatabaseConfigMap map[string]*DatabaseConfig
 
 func (dbc *DatabaseConfig) DbComponentConfigs() ComponentConfigs {
-	return dbc.componentConfigs
+	return dbc.ComponentConfigs
 }
 
 func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, errs []error) {
+	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
@@ -62,22 +62,23 @@ func (dbc *DatabaseConfig) DatabaseService() (pool *pgxpool.Pool, errs []error) 
 	default:
 		connectionStr = dbc.RawConnectionString
 	}
+
 	if cfg, cfgErr := pgxpool.ParseConfig(connectionStr); cfgErr != nil {
 		log.Errorf("DatabaseService: postgres connection failed: %s; \nerror: %v", connectionStr, cfgErr)
 		return nil, []error{cfgErr}
 
 	} else {
 
-		var poolErr error
-		if pool, poolErr = pgxpool.NewWithConfig(ctx, cfg); poolErr != nil {
-			log.Errorf("DatabaseService: failed to establish connection pool: %v", poolErr)
-			return nil, []error{poolErr}
+		if pool, err = pgxpool.NewWithConfig(ctx, cfg); err != nil {
+			log.Errorf("DatabaseService: failed to establish connection pool: %v", err)
+			return nil, []error{err}
 		}
 		if pingErr := pool.Ping(ctx); pingErr != nil {
 			return nil, []error{fmt.Errorf("DatabaseService: unable to ping database; err: %v", pingErr)}
 		}
 	}
 	log.Tracef("Database connection successful: '%s'\n", dbc.Database)
+
 	return pool, nil
 }
 
@@ -106,7 +107,7 @@ func (dbc *DatabaseConfig) validate() (errs []error) {
 }
 
 func validationError(field, component string) error {
-	return errors.New(fmt.Sprintf("component: %s - '%s' is a required field", component, field))
+	return fmt.Errorf("component: %s - '%s' is a required field", component, field)
 }
 
 func (m *DatabaseConfigMap) UnmarshalYAML(value *yaml.Node) error {

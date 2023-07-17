@@ -21,7 +21,6 @@ func httpClient(cc ClientConfig) *http.Client {
 	if cc.DisableCompression == True {
 		disableCompression = true
 	}
-
 	if to := toInt(cc.Timeout); to != 0 {
 		timeout = to
 	}
